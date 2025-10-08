@@ -19,7 +19,7 @@ data = {
     "parent": {"database_id": DATABASE_ID},
     "properties": {
         "Nimi": {
-            "title": [{"text": {"content": "Testfirma3 OÜ"}}]
+            "title": [{"text": {"content": "Testfirma5 OÜ"}}]
         },
         "Registrikood": {
             "number": 123456789

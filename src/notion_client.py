@@ -1,0 +1,45 @@
+import requests
+import json
+
+class NotionClient:
+    """Klass suhtlemiseks Notioni API-ga."""
+    def __init__(self, token: str, database_id: str):
+        self.token = token
+        self.database_id = database_id
+        self.headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+            "Notion-Version": "2022-06-28"
+        }
+
+    def create_page(self, payload: dict):
+        """Lisab andmebaasi uue lehe (kirje)."""
+        url = "https://api.notion.com/v1/pages"
+        r = requests.post(url, headers=self.headers, json=payload)
+        r.raise_for_status()
+        return r.json()
+
+    def update_page(self, page_id: str, properties: dict):
+        """Uuendab olemasolevat lehte (kirjet)."""
+        url = f"https://api.notion.com/v1/pages/{page_id}"
+        r = requests.patch(url, headers=self.headers, json={"properties": properties})
+        r.raise_for_status()
+        return r.json()
+
+    def query_by_regcode(self, regcode: str):
+        """Otsib lehte registrikoodi järgi."""
+        url = f"https://api.notion.com/v1/databases/{self.database_id}/query"
+
+        payload = {
+            "filter": {
+                "property": "Registrikood",
+                "number": {"equals": int(regcode)}
+            }
+        }
+
+        r = requests.post(url, headers=self.headers, json=payload)
+        r.raise_for_status()
+        res = r.json()
+        if res.get("results"):
+            return res["results"][0]
+        return None
