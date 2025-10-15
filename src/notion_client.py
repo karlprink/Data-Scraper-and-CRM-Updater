@@ -12,6 +12,13 @@ class NotionClient:
             "Notion-Version": "2022-06-28"
         }
 
+    def get_page(self, page_id: str):
+        """Tagastab konkreetse lehe andmed (koos properties metaandmetega)."""
+        url = f"https://api.notion.com/v1/pages/{page_id}"
+        r = requests.get(url, headers=self.headers)
+        r.raise_for_status()
+        return r.json()
+
     def create_page(self, payload: dict):
         """Lisab andmebaasi uue lehe (kirje)."""
         url = "https://api.notion.com/v1/pages"
