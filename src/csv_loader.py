@@ -1,11 +1,12 @@
-# csv_loader.py
 import pandas as pd
 import math
+
 
 def load_csv(url: str) -> pd.DataFrame:
     """Loads CSV file from URL."""
     # Assumes separator is semicolon (;) as described in the example
     return pd.read_csv(url, sep=";")
+
 
 def find_company_by_regcode(df: pd.DataFrame, regcode: str) -> dict | None:
     """Finds a company from the DataFrame by registry code."""
@@ -14,6 +15,7 @@ def find_company_by_regcode(df: pd.DataFrame, regcode: str) -> dict | None:
         # The result is converted to a dictionary for accessibility
         return row.iloc[0].to_dict()
     return None
+
 
 def clean_value(val):
     """

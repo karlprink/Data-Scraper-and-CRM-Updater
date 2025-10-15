@@ -1,9 +1,9 @@
-# notion_client.py
 import requests
-import json
+
 
 class NotionClient:
     """Class for communicating with the Notion API."""
+
     def __init__(self, token: str, database_id: str):
         self.token = token
         self.database_id = database_id

@@ -1,6 +1,4 @@
 import requests
-import json
-import math
 from typing import Tuple, List, Dict, Any
 
 # Eeldab, et load_csv, find_company_by_regcode, clean_value, NotionClient on imporditud

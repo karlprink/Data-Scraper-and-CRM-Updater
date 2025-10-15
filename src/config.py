@@ -1,8 +1,7 @@
-# config.py
 import yaml
 
-
 config_path = 'config.yaml'
+
 
 def load_config(path=config_path):
     """Loads configuration from YAML file."""
