@@ -20,46 +20,7 @@ def sync_company(regcode: str, config: dict):
         config["notion"]["database_id"]
     )
 
-
-    maakond_val_raw = clean_value(company.get("asukoha_ehak_tekstina"))
-    email_val = clean_value(company.get("email"))
-    tel_val = clean_value(company.get("telefon"))
-    veeb_val = clean_value(company.get("teabesysteemi_link"))
-    linkedin_val = clean_value(company.get("linkedin"))
-
-
-    # Choose only county from longer address
-    maakond_prop = {"multi_select": []}
-    if maakond_val_raw:
-        parts = maakond_val_raw.split(',')
-        # Take only county
-        maakond_tag = parts[-1].strip()
-
-        if maakond_tag:
-            maakond_prop = {"multi_select": [{"name": maakond_tag}]}
-
-    # If value exists send value else none
-    email_prop = {"email": email_val} if email_val else {"email": None}
-    tel_prop = {"phone_number": tel_val} if tel_val else {"phone_number": None}
-    veeb_prop = {"url": veeb_val} if veeb_val else {"url": None}
-    linkedin_prop = {"url": linkedin_val} if linkedin_val else {"url": None}
-
-    properties = {
-        "Nimi": {"title": [{"text": {"content": clean_value(company.get("nimi")) or ""}}]},
-        "Registrikood": {"number": int(clean_value(company.get("ariregistri_kood")) or 0)},
-        "Aadress": {"rich_text": [{"text": {"content": clean_value(company.get("asukoht_ettevotja_aadressis")) or ""}}]},
-
-        "Maakond": maakond_prop,
-
-        "E-post": email_prop,
-        "Tel. nr": tel_prop,
-        "Veebileht": veeb_prop,
-        "LinkedIn": linkedin_prop,
-
-        "Kontaktisikud": {"people": company.get("kontaktisikud_list") or []},
-        "Tegevusvaldkond": {"rich_text": [{"text": {"content": clean_value(company.get("tegevusvaldkond")) or ""}}]},
-        "Põhitegevus": {"rich_text": [{"text": {"content": clean_value(company.get("pohitegevus")) or ""}}]}
-    }
+    properties = _build_properties_from_company(company)
 
     # Compose full payload for notin db
     data = {
