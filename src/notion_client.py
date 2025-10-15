@@ -1,8 +1,9 @@
+# notion_client.py
 import requests
 import json
 
 class NotionClient:
-    """Klass suhtlemiseks Notioni API-ga."""
+    """Class for communicating with the Notion API."""
     def __init__(self, token: str, database_id: str):
         self.token = token
         self.database_id = database_id
@@ -20,21 +21,21 @@ class NotionClient:
         return r.json()
 
     def create_page(self, payload: dict):
-        """Lisab andmebaasi uue lehe (kirje)."""
+        """Adds a new page (entry) to the database."""
         url = "https://api.notion.com/v1/pages"
         r = requests.post(url, headers=self.headers, json=payload)
         r.raise_for_status()
         return r.json()
 
     def update_page(self, page_id: str, properties: dict):
-        """Uuendab olemasolevat lehte (kirjet)."""
+        """Updates an existing page (entry)."""
         url = f"https://api.notion.com/v1/pages/{page_id}"
         r = requests.patch(url, headers=self.headers, json={"properties": properties})
         r.raise_for_status()
         return r.json()
 
     def query_by_regcode(self, regcode: str):
-        """Otsib lehte registrikoodi järgi."""
+        """Searches for a page by registry code."""
         url = f"https://api.notion.com/v1/databases/{self.database_id}/query"
 
         payload = {
