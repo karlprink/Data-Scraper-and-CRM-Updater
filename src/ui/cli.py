@@ -1,3 +1,4 @@
+import argparse
 import sys
 from ..config import load_config
 from ..sync import load_company_data, process_company_sync, autofill_page_by_page_id
