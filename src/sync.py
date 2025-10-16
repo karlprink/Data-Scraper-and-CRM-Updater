@@ -1,7 +1,7 @@
 import requests
 
-from .csv_loader import load_csv, find_company_by_regcode, clean_value
-from .notion_client import NotionClient
+from csv_loader import load_csv, find_company_by_regcode, clean_value
+from notion_client import NotionClient
 import json
 
 

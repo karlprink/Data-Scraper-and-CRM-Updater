@@ -1,0 +1,12 @@
+{
+  "functions": {
+    "api/autofill.py": {
+      "runtime": "python3.9"
+    }
+  },
+  "env": {
+    "NOTION_TOKEN": "@notion-token",
+    "NOTION_DATABASE_ID": "@notion-database-id",
+    "ARIREGISTER_CSV_URL": "@ariregister-csv-url"
+  }
+}
