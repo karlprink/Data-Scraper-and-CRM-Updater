@@ -10,7 +10,8 @@ from sync import autofill_page_by_page_id
 
 app = Flask(__name__)
 
-@app.route('/api/autofill', methods=['GET', 'POST'])
+# IMPORTANT for Vercel: the function is mounted at /api/autofill, so the route here must be '/'
+@app.route('/', methods=['GET', 'POST'])
 def autofill():
     try:
         # Get pageId from query parameters or JSON body
@@ -38,17 +39,15 @@ def autofill():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route('/', methods=['GET'])
+@app.route('/health', methods=['GET'])
 def health_check():
     return jsonify({
         "status": "ok",
         "message": "Notion Autofill API is running",
-        "endpoint": "/api/autofill?pageId=YOUR_PAGE_ID"
+        "endpoint": "GET /?pageId=YOUR_PAGE_ID"
     })
 
-# For Vercel deployment
-def handler(request):
-    return app(request.environ, lambda *args: None)
+# For Vercel deployment: exporting `app` is sufficient
 
 # For local development
 if __name__ == "__main__":
