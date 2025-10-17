@@ -117,14 +117,18 @@ def run_cli():
             print("Käivitatud režiimis: Automaatne lehe täitmine.")
             autofill_page_by_page_id(args.page_id, config)
         elif args.regcode:
-            # Otsetäitmine registrikoodi kaudu (ilma kinnituseta, vana sync_company režiim)
+            # Otsetäitmine registrikoodi kaudu (ilma kinnituseta, uus mitteinteraktiivne voog)
             print("Käivitatud režiimis: Automaatne sünkroonimine (ilma kinnituseta).")
-            # Kuna sync_company pole enam teie uues koodis defineeritud, kasutame uut loogikat
-            # Et vältida koodi keerukust, võime siin kasutada otse sync_company (vanast koodist)
-            # või kasutada sarnast loogikat kui interaktiivses režiimis (ilma kinnituseta).
-            # Kasutan siin lihtsaimat lahendust, eeldades, et sync_company viitas vana koodile
-            # sync_company(args.regcode, config)
-            print("See režiim vajab manuaalset kohandamist või vana sync_company funktsiooni.")
+            load_result = load_company_data(args.regcode, config)
+            if load_result["status"] == "error":
+                print(load_result["message"])
+                sys.exit(1)
+
+            data_to_sync = load_result["data"]
+            sync_result = process_company_sync(data_to_sync, config)
+            print(sync_result["message"])
+            if sync_result["status"] == "error":
+                sys.exit(1)
 
     else:
         # Interaktiivne režiim (kui argumente pole antud)
