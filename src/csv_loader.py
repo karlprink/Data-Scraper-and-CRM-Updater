@@ -4,7 +4,11 @@ import math
 def load_csv(url: str) -> pd.DataFrame:
     """Laeb CSV-faili URL-ist."""
     # Eeldab, et eraldaja on semikoolon (;) nagu näites kirjeldatud
-    return pd.read_csv(url, sep=";")
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+    }
+
+    return pd.read_csv(url, sep=";", storage_options=headers)
 
 def find_company_by_regcode(df: pd.DataFrame, regcode: str) -> dict | None:
     """Leiab ettevõtte DataFrame'ist registrikoodi järgi."""
