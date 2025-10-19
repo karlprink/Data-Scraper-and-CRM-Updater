@@ -1,0 +1,15 @@
+{
+  "builds": [
+    {
+      "src": "api/autofill.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/autofill",
+      "dest": "/api/autofill.py"
+    }
+  ] 
+}
+
