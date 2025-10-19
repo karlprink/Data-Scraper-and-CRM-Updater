@@ -1,36 +1,53 @@
+import os
 import requests
-
-from csv_loader import load_csv, find_company_by_regcode, clean_value
-from notion_client import NotionClient
 import json
+import logging
+
+# Set up basic logging to output to the console, which Vercel captures.
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
 
-def sync_company(regcode: str, config: dict):
+# These will now be read directly from environment variables
+from .csv_loader import load_csv, find_company_by_regcode, clean_value
+from .notion_client import NotionClient
+
+
+def sync_company(regcode: str):
+    """
+    Finds a company by its registration code in the CSV and syncs it to Notion.
+    Configuration is read directly from environment variables.
+    """
+    # Get configuration from environment variables
+    NOTION_API_KEY = os.getenv("NOTION_API_KEY")
+    NOTION_DATABASE_ID = os.getenv("NOTION_DATABASE_ID")
+    ARIREGISTER_CSV_URL = os.getenv("ARIREGISTER_CSV_URL")
+
+    # Validate that all required environment variables are set
+    if not all([NOTION_API_KEY, NOTION_DATABASE_ID, ARIREGISTER_CSV_URL]):
+        logging.error("Missing one or more required environment variables (NOTION_API_KEY, NOTION_DATABASE_ID, ARIREGISTER_CSV_URL).")
+        return
 
     # Load csv
-    df = load_csv(config["ariregister"]["csv_url"])
+    df = load_csv(ARIREGISTER_CSV_URL)
     company = find_company_by_regcode(df, regcode)
 
     if not company:
-        print(f"⚠️ Ettevõtet registrikoodiga {regcode} ei leitud CSV-s.")
+        logging.warning(f"Ettevõtet registrikoodiga {regcode} ei leitud CSV-s.")
         return
 
-    notion = NotionClient(
-        config["notion"]["token"],
-        config["notion"]["database_id"]
-    )
+    notion = NotionClient(NOTION_API_KEY, NOTION_DATABASE_ID)
 
     properties = _build_properties_from_company(company)
 
-    # Compose full payload for notin db
+    # Compose full payload for Notion db
     data = {
         "parent": {"database_id": notion.database_id},
         "properties": properties
     }
 
     # Kontrollprint payload
-    print("Notion payload:")
-    print(json.dumps(data, indent=2, ensure_ascii=False))
+    logging.info("Notion payload:")
+    logging.info(json.dumps(data, indent=2, ensure_ascii=False))
 
     # Check if exists already in notion database
     try:
@@ -39,24 +56,24 @@ def sync_company(regcode: str, config: dict):
         if existing:
             page_id = existing["id"]
             notion.update_page(page_id, properties)
-            print(f"✅ Uuendatud: {clean_value(company.get('nimi'))} ({regcode})")
+            logging.info(f"Uuendatud: {clean_value(company.get('nimi'))} ({regcode})")
         else:
             notion.create_page(data)
-            print(f"➕ Lisatud: {clean_value(company.get('nimi'))} ({regcode})")
+            logging.info(f"Lisatud: {clean_value(company.get('nimi'))} ({regcode})")
 
     except requests.HTTPError as e:
-        # Catch error detailss
+        # Catch error details
         error_details = ""
         try:
             error_details = e.response.json()
         except:
             error_details = e.response.text
 
-        print(f"❌ Viga Notion API-s ({e.response.status_code} {e.response.reason}):")
-        print(json.dumps(error_details, indent=2, ensure_ascii=False))
+        logging.error(f"Viga Notion API-s ({e.response.status_code} {e.response.reason}):")
+        logging.error(json.dumps(error_details, indent=2, ensure_ascii=False))
 
     except Exception as e:
-        print(f"❌ Üldine viga: {e}")
+        logging.error(f"Üldine viga: {e}")
 
 
 def _build_properties_from_company(company: dict) -> dict:
@@ -95,20 +112,35 @@ def _build_properties_from_company(company: dict) -> dict:
     return properties
 
 
-def autofill_page_by_page_id(page_id: str, config: dict):
+def autofill_page_by_page_id(page_id: str):
     """Loeb Registrikood property antud Notioni lehelt ning täidab ülejäänud väljad."""
-    notion = NotionClient(
-        config["notion"]["token"],
-        config["notion"]["database_id"],
-    )
+    logging.info(f"--- Starting autofill for page_id: {page_id} ---")
+    
+    # Get configuration from environment variables
+    NOTION_API_KEY = os.getenv("NOTION_API_KEY")
+    NOTION_DATABASE_ID = os.getenv("NOTION_DATABASE_ID")
+    ARIREGISTER_CSV_URL = os.getenv("ARIREGISTER_CSV_URL")
+    
+    # Validate that all required environment variables are set
+    if not all([NOTION_API_KEY, NOTION_DATABASE_ID, ARIREGISTER_CSV_URL]):
+        logging.error("Missing one or more required environment variables (NOTION_API_KEY, NOTION_DATABASE_ID, ARIREGISTER_CSV_URL).")
+        return
+        
+    notion = NotionClient(NOTION_API_KEY, NOTION_DATABASE_ID)
 
     # Loe lehe properties
-    page = notion.get_page(page_id)
-    props = page.get("properties", {})
+    try:
+        page = notion.get_page(page_id)
+        props = page.get("properties", {})
+        logging.info("Successfully fetched page properties from Notion.")
+    except Exception as e:
+        logging.error(f"Failed to fetch page from Notion: {e}")
+        return
 
     reg_prop = props.get("Registrikood")
     if not reg_prop:
-        print("❌ Lehe 'Registrikood' property puudub.")
+        logging.error("DEBUG: Lehe 'Registrikood' property puudub.")
+        logging.info(f"Available properties are: {list(props.keys())}")
         return
 
     reg_type = reg_prop.get("type")
@@ -125,17 +157,35 @@ def autofill_page_by_page_id(page_id: str, config: dict):
                 regcode = ''.join(ch for ch in content if ch.isdigit())
 
     if not regcode:
-        print("❌ 'Registrikood' on tühi või vales formaadis sellel Notioni lehel.")
+        logging.warning("'Registrikood' on tühi või vales formaadis sellel Notioni lehel.")
         return
+    
+    logging.info(f"Found Registrikood: {regcode}")
 
     # Lae CSV ja leia ettevõte
-    df = load_csv(config["ariregister"]["csv_url"])
-    company = find_company_by_regcode(df, regcode)
-    if not company:
-        print(f"⚠️ Ettevõtet registrikoodiga {regcode} ei leitud CSV-s.")
+    try:
+        df = load_csv(ARIREGISTER_CSV_URL)
+        logging.info("Successfully loaded CSV file.")
+    except Exception as e:
+        logging.error(f"Failed to load CSV: {e}")
         return
 
+    company = find_company_by_regcode(df, regcode)
+    if not company:
+        logging.warning(f"Ettevõtet registrikoodiga {regcode} ei leitud CSV-s.")
+        return
+    
+    logging.info(f"Found matching company in CSV: {clean_value(company.get('nimi'))}")
+
     properties = _build_properties_from_company(company)
+    logging.info("Built properties payload to send to Notion:")
+    logging.info(json.dumps(properties, indent=2, ensure_ascii=False))
+
     # Uuenda sama lehte
-    notion.update_page(page_id, properties)
-    print(f"✅ Täidetud leht: {clean_value(company.get('nimi'))} ({regcode})")
+    try:
+        notion.update_page(page_id, properties)
+        logging.info(f"Successfully called Notion update_page API for: {clean_value(company.get('nimi'))} ({regcode})")
+        logging.info("--- Autofill process completed successfully. ---")
+    except Exception as e:
+        logging.error(f"Failed during Notion page update: {e}")
+

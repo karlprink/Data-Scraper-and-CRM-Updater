@@ -1,22 +1,22 @@
-import yaml
 import os
 
-
-config_path = 'config.yaml'
-
-def load_config(path=config_path):
-    # Check if running in Vercel (environment variables available)
-    if os.getenv('NOTION_TOKEN') and os.getenv('NOTION_DATABASE_ID'):
+def load_config():
+    """
+    Loads configuration from environment variables if running in Vercel,
+    otherwise falls back to a local YAML file.
+    """
+    # Check for Vercel environment variables first
+    # Note: Vercel uses NOTION_API_KEY, not NOTION_TOKEN
+    if os.getenv('NOTION_API_KEY') and os.getenv('NOTION_DATABASE_ID'):
+        print("Loading configuration from environment variables.")
         return {
             "notion": {
-                "token": os.getenv('NOTION_TOKEN'),
+                "token": os.getenv('NOTION_API_KEY'),
                 "database_id": os.getenv('NOTION_DATABASE_ID')
             },
             "ariregister": {
-                "csv_url": os.getenv('ARIREGISTER_CSV_URL', 'https://ariregister.rik.ee/api/ettevotja_rekvisiidid__lihtandmed.csv')
+                "csv_url": os.getenv('ARIREGISTER_CSV_URL', 'https://avaandmed.ariregister.rik.ee/sites/default/files/avaandmed/ettevotja_rekvisiidid__lihtandmed.csv.zip')
             }
         }
     
-    # Fallback to config file
-    with open(path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+
