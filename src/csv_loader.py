@@ -7,6 +7,7 @@ from datetime import timedelta
 CACHE_FILE_PATH = "/tmp/ariregister_data.csv"
 CACHE_EXPIRATION = timedelta(hours=24)
 
+
 def load_csv(url: str) -> pd.DataFrame:
     """
     Loads a CSV file from a URL, using a local cache to avoid
@@ -31,6 +32,7 @@ def load_csv(url: str) -> pd.DataFrame:
     
     return df
 
+
 def find_company_by_regcode(df: pd.DataFrame, regcode: str) -> dict | None:
     """Leiab ettevõtte DataFrame'ist registrikoodi järgi."""
 
@@ -40,10 +42,11 @@ def find_company_by_regcode(df: pd.DataFrame, regcode: str) -> dict | None:
         return row.iloc[0].to_dict()
     return None
 
+
 def clean_value(val):
     """
-    Muudab pandas NaN või tühjad stringid None-ks ja trimib stringid.
-    Notioni API jaoks on oluline, et tühjad väärtused oleksid None, mitte "".
+    Converts pandas NaN or empty strings to None and strips strings.
+    For the Notion API, it's important that empty values are None, not "".
     """
     if val is None:
         return None
