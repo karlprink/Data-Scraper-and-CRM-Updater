@@ -2,6 +2,8 @@ import pandas as pd
 import math
 import os
 import time
+import requests
+import io
 from datetime import timedelta
 
 CACHE_FILE_PATH = "/tmp/ariregister_data.csv"
@@ -25,7 +27,11 @@ def load_csv(url: str) -> pd.DataFrame:
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
     }
     
-    df = pd.read_csv(url, sep=";", storage_options=headers)
+    response = requests.get(url, headers=headers)
+    response.raise_for_status()
+    
+    # Read CSV from the response content
+    df = pd.read_csv(io.StringIO(response.text), sep=";")
     
     df.to_csv(CACHE_FILE_PATH, sep=";", index=False)
     print(f"CACHE UPDATED: Saved new data to {CACHE_FILE_PATH}")
