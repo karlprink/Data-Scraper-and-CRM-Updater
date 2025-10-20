@@ -8,11 +8,11 @@ The feature reduces manual data entry and ensures accurate, up-to-date informati
 
 ### Implemented Functionality
 - The system retrieves company information based on the entered Business Registry Code.  
-- When **“Auto-Fill”** is clicked, the corresponding company fields are automatically populated.  
+- When the vercel link is clicked, the corresponding company fields are automatically populated.  
 
 ### Main Success Scenario
 1. The collaboration manager enters a valid Business Registry Code.  
-2. The manager clicks **“Auto-Fill.”**  
+2. The manager clicks the vercel link.
 3. The system fetches company data and fills in all fields in the selected CRM entry.  
 4. If the registry code is correct, then the corresponding fields are filled.
 
