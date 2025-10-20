@@ -22,12 +22,13 @@ def autofill():
             return jsonify({"error": "No pageId provided"}), 400
         
         # Run autofill. The function will get its own config from env variables.
-        autofill_page_by_page_id(page_id)
+        result = autofill_page_by_page_id(page_id)
         
         return jsonify({
             "success": True, 
             "message": "Notion page updated successfully",
-            "pageId": page_id
+            "pageId": page_id,
+            "debug": result
         })
         
     except Exception as e:

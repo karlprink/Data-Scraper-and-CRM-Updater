@@ -2,6 +2,7 @@ import os
 import requests
 import json
 import logging
+from typing import Tuple, Dict, Any
 
 # Set up basic logging to output to the console, which Vercel captures.
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
@@ -37,51 +38,17 @@ def sync_company(regcode: str):
 
     notion = NotionClient(NOTION_API_KEY, NOTION_DATABASE_ID)
 
-def _prepare_notion_properties(company: dict, regcode: str) -> Tuple[Dict[str, Any], List[str], str]:
+def _prepare_notion_properties(company: dict, regcode: str) -> Tuple[Dict[str, Any], list, str]:
     """
     Cleans company data and aggregates it into the Notion Properties format,
     tracking fields that remain empty (UC-1 Extension 5b).
     Returns: (properties: dict, empty_fields: list, company_name: str)
     """
-
-    # Compose full payload for Notion db
-    data = {
-        "parent": {"database_id": notion.database_id},
-        "properties": properties
-    }
-
-    # Kontrollprint payload
-    logging.info("Notion payload:")
-    logging.info(json.dumps(data, indent=2, ensure_ascii=False))
-
-    # Check if exists already in notion database
-    try:
-        existing = notion.query_by_regcode(regcode)
-
-        if existing:
-            page_id = existing["id"]
-            notion.update_page(page_id, properties)
-            logging.info(f"Uuendatud: {clean_value(company.get('nimi'))} ({regcode})")
-        else:
-            notion.create_page(data)
-            logging.info(f"Lisatud: {clean_value(company.get('nimi'))} ({regcode})")
-
-    except requests.HTTPError as e:
-        # Catch error details
-        error_details = ""
-        try:
-            error_details = e.response.json()
-        except:
-            error_details = e.response.text
-
-        logging.error(f"Viga Notion API-s ({e.response.status_code} {e.response.reason}):")
-        logging.error(json.dumps(error_details, indent=2, ensure_ascii=False))
-
-    except Exception as e:
-        logging.error(f"Üldine viga: {e}")
+    company_name = clean_value(company.get('nimi'))
+    return _build_properties_from_company(company, regcode, company_name)
 
 
-def _build_properties_from_company(company: dict) -> dict:
+def _build_properties_from_company(company: dict, regcode: str, company_name: str) -> Tuple[Dict[str, Any], list, str]:
     """Koostab Notioni properties objektid CSV andmete põhjal."""
     maakond_val_raw = clean_value(company.get("asukoha_ehak_tekstina"))
     email_val = clean_value(company.get("email"))
@@ -257,8 +224,9 @@ def autofill_page_by_page_id(page_id: str):
     
     # Validate that all required environment variables are set
     if not all([NOTION_API_KEY, NOTION_DATABASE_ID, ARIREGISTER_CSV_URL]):
-        logging.error("Missing one or more required environment variables (NOTION_API_KEY, NOTION_DATABASE_ID, ARIREGISTER_CSV_URL).")
-        return
+        error_msg = "Missing one or more required environment variables (NOTION_API_KEY, NOTION_DATABASE_ID, ARIREGISTER_CSV_URL)."
+        logging.error(error_msg)
+        return {"error": error_msg, "step": "env_check"}
         
     notion = NotionClient(NOTION_API_KEY, NOTION_DATABASE_ID)
 
@@ -268,14 +236,15 @@ def autofill_page_by_page_id(page_id: str):
         props = page.get("properties", {})
         logging.info("Successfully fetched page properties from Notion.")
     except Exception as e:
-        logging.error(f"Failed to fetch page from Notion: {e}")
-        return
+        error_msg = f"Failed to fetch page from Notion: {e}"
+        logging.error(error_msg)
+        return {"error": error_msg, "step": "fetch_page"}
 
     reg_prop = props.get("Registrikood")
     if not reg_prop:
-        logging.error("DEBUG: Lehe 'Registrikood' property puudub.")
-        logging.info(f"Available properties are: {list(props.keys())}")
-        return
+        error_msg = f"DEBUG: Lehe 'Registrikood' property puudub. Available properties: {list(props.keys())}"
+        logging.error(error_msg)
+        return {"error": error_msg, "step": "missing_registrikood", "available_props": list(props.keys())}
 
     # Extract regcode (handling number and rich_text formats)
     regcode = None
@@ -298,8 +267,9 @@ def autofill_page_by_page_id(page_id: str):
                 regcode = ''.join(ch for ch in content if ch.isdigit())
 
     if not regcode:
-        logging.warning("'Registrikood' on tühi või vales formaadis sellel Notioni lehel.")
-        return
+        error_msg = "'Registrikood' on tühi või vales formaadis sellel Notioni lehel."
+        logging.warning(error_msg)
+        return {"error": error_msg, "step": "invalid_registrikood"}
     
     logging.info(f"Found Registrikood: {regcode}")
 
@@ -308,25 +278,32 @@ def autofill_page_by_page_id(page_id: str):
         df = load_csv(ARIREGISTER_CSV_URL)
         logging.info("Successfully loaded CSV file.")
     except Exception as e:
-        logging.error(f"Failed to load CSV: {e}")
-        return
+        error_msg = f"Failed to load CSV: {e}"
+        logging.error(error_msg)
+        return {"error": error_msg, "step": "load_csv"}
 
     company = find_company_by_regcode(df, regcode)
     if not company:
-        logging.warning(f"Ettevõtet registrikoodiga {regcode} ei leitud CSV-s.")
-        return
+        error_msg = f"Ettevõtet registrikoodiga {regcode} ei leitud CSV-s."
+        logging.warning(error_msg)
+        return {"error": error_msg, "step": "company_not_found", "regcode": regcode}
     
     logging.info(f"Found matching company in CSV: {clean_value(company.get('nimi'))}")
 
-    properties = _build_properties_from_company(company)
+    company_name = clean_value(company.get('nimi'))
+    properties, empty_fields, _ = _build_properties_from_company(company, regcode, company_name)
     logging.info("Built properties payload to send to Notion:")
     logging.info(json.dumps(properties, indent=2, ensure_ascii=False))
 
     # Uuenda sama lehte
     try:
         notion.update_page(page_id, properties)
-        logging.info(f"Successfully called Notion update_page API for: {clean_value(company.get('nimi'))} ({regcode})")
+        success_msg = f"Successfully called Notion update_page API for: {clean_value(company.get('nimi'))} ({regcode})"
+        logging.info(success_msg)
         logging.info("--- Autofill process completed successfully. ---")
+        return {"success": True, "message": success_msg, "company_name": company_name, "regcode": regcode}
     except Exception as e:
-        logging.error(f"Failed during Notion page update: {e}")
+        error_msg = f"Failed during Notion page update: {e}"
+        logging.error(error_msg)
+        return {"error": error_msg, "step": "notion_update", "details": str(e)}
 
