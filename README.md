@@ -43,3 +43,11 @@ The feature reduces manual data entry and ensures accurate, up-to-date informati
 ## Testing Summary
 
 Verified full workflow from link click to field population, including success and error feedback scenarios in the pop-up window.
+
+## Remaining Bugs and Known Issues
+
+* **Suboptimal User Experience for Trigger:** The current method for triggering the autofill requires the user to click a link, which opens a new browser tab. The ideal solution is a button that runs the process silently in the background without navigating the user away from their Notion page. Research for a better, low-latency solution is ongoing.
+    * For more details, see GitHub Issue: **#24**
+
+## Status
+**Use Case 1 — Auto-Fill** main and alternate scenarios are implemented, tested, and deployed as part of the current release.
