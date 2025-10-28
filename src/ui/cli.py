@@ -1,7 +1,7 @@
 import argparse
 import sys
-from ..config import load_config
-from ..sync import load_company_data, process_company_sync, autofill_page_by_page_id
+from src.ui.config_loader import load_config
+from api.sync import load_company_data, process_company_sync, autofill_page_by_page_id
 
 
 def print_properties(properties: dict):

@@ -1,7 +1,7 @@
 import yaml
 import os
 
-config_path = '../../config.yaml'
+config_path = 'config.yaml'
 
 
 def load_config(path=config_path):
