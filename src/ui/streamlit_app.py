@@ -1,31 +1,14 @@
-import os
-
-import streamlit as st
-import pandas as pd
 import math
 import requests
 from typing import Tuple, List, Dict, Any
-
-# IMPORDI TEGELIK KONFIGURATSIOONI LOADER
 from config_loader import load_config
-
-# --- CONFIGURATION & ENV SETUP EEMALDATUD ---
-# Konfiguratsioon laaditakse nüüd load_config() funktsiooni kaudu,
-# mis loeb config.yaml faili ja keskkonnamuutujaid.
-
-# --- CSV LOADER UTILITY FUNCTIONS (REAL) ---
-
-import os
-import pandas as pd
-import streamlit as st
-
 import os
 import streamlit as st
 import pandas as pd
 
 def load_csv():
-    csv_path  = "/mnt/c/Users/prink/Videos/3.aasta/tarkvaraprojekt/Data-Scraper-and-CRM-Updater/data/ettevotja_rekvisiidid__lihtandmed.csv"
-
+    config = load_config()
+    csv_path = config["ariregister"]["csv_path"]
 
     st.write("📁 Kontrollin CSV teed:", csv_path)
     st.write("Kas eksisteerib:", os.path.exists(csv_path))
@@ -391,7 +374,7 @@ def autofill_page_by_page_id(page_id: str, config: dict):
             return
 
         # 3. Load company data from CSV
-        df = load_csv(config["ariregister"]["csv_url"])
+        df = load_csv(config["ariregister"]["json_url"])
         company = find_company_by_regcode(df, regcode)
 
         if not company:

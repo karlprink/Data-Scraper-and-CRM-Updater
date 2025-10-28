@@ -15,7 +15,7 @@ def load_config():
                 "database_id": os.getenv('NOTION_DATABASE_ID')
             },
             "ariregister": {
-                "csv_url": os.getenv('ARIREGISTER_CSV_URL', 'https://avaandmed.ariregister.rik.ee/sites/default/files/avaandmed/ettevotja_rekvisiidid__lihtandmed.csv.zip')
+                "json_url": os.getenv('ARIREGISTER_CSV_URL', 'https://avaandmed.ariregister.rik.ee/sites/default/files/avaandmed/ettevotja_rekvisiidid__yldandmed.json.zip')
             }
         }
     
