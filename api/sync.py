@@ -37,8 +37,6 @@ def sync_company(regcode: str):
 
     notion = NotionClient(NOTION_API_KEY, NOTION_DATABASE_ID)
 
-    # ... (Siit edasi on loogika puudu, aga see funktsioon ei ole API poolt kasutusel)
-    # Tõenäoliselt peaks siin olema properties ehitamine ja notion.update_page vms
 
 
 def _prepare_notion_properties(company: dict, regcode: str) -> Tuple[Dict[str, Any], list, str]:
