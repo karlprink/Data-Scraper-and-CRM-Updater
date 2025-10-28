@@ -7,9 +7,10 @@ import ijson
 import math
 from datetime import timedelta
 
-CACHE_FILE_PATH = "cache/ariregister_data.zip"
+CACHE_DIR = "/tmp/cache"
+CACHE_FILE_PATH = os.path.join(CACHE_DIR, "ariregister_data.zip")
 CACHE_EXPIRATION = timedelta(hours=24)
-CACHE_DIR = "cache"
+
 
 
 def get_result_cache_path(target_code: str) -> str:
