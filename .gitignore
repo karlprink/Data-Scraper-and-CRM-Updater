@@ -1,3 +1,4 @@
 /.env
 /data/ettevotja_rekvisiidid__lihtandmed.csv
 config.yaml
+/cache/
