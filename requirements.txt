@@ -1,7 +1,6 @@
-requests~=2.32.5
-python-dotenv~=1.1.1
-pyyaml
-pandas
 flask~=2.3.0
 notion-client
 pandas
+python-dotenv~=1.1.1
+pyyaml
+requests~=2.32.5

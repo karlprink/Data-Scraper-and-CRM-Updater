@@ -2,14 +2,21 @@
   "builds": [
     {
       "src": "api/autofill.py",
-      "use": "@vercel/python"
+      "use": "@vercel/python",
+      "config": {
+        "maxLambdaSize": "30mb",
+        "runtime": "python3.11"
+      }
     }
   ],
   "routes": [
     {
       "src": "/api/autofill",
-      "dest": "/api/autofill.py"
+      "dest": "api/autofill.py"
+    },
+    {
+      "src": "/",
+      "dest": "api/autofill.py"
     }
-  ] 
+  ]
 }
-
