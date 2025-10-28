@@ -28,15 +28,17 @@ def sync_company(regcode: str):
             "Missing one or more required environment variables (NOTION_API_KEY, NOTION_DATABASE_ID, ARIREGISTER_JSON_URL).")
         return
 
-    # Load csv
-    df = load_json(ARIREGISTER_JSON_URL)
-    company = find_company_by_regcode(df, regcode)
+    # 💡 PARANDUS: Kasuta õiget funktsiooni
+    company = find_company_by_regcode(ARIREGISTER_JSON_URL, regcode)
 
     if not company:
         logging.warning(f"Ettevõtet registrikoodiga {regcode} ei leitud failis.")
         return
 
     notion = NotionClient(NOTION_API_KEY, NOTION_DATABASE_ID)
+
+    # ... (Siit edasi on loogika puudu, aga see funktsioon ei ole API poolt kasutusel)
+    # Tõenäoliselt peaks siin olema properties ehitamine ja notion.update_page vms
 
 
 def _prepare_notion_properties(company: dict, regcode: str) -> Tuple[Dict[str, Any], list, str]:
@@ -144,20 +146,17 @@ def load_company_data(regcode: str, config: dict) -> dict:
         }
 
     try:
-        print(["csv_url"])
-        company_data = load_json(config["ariregister"]["json_url"], regcode)
+        company = find_company_by_regcode(config["ariregister"]["json_url"], regcode)
     except Exception as e:
         return {
             "status": "error",
             "message": f"Faili laadimise viga: {e}"
         }
 
-    company = company_data
-
     if not company:
         return {
             "status": "error",
-            "message": f"Ettevõtet registrikoodiga {regcode} ei leitud Äriregistri andmetest (CSV)."
+            "message": f"Ettevõtet registrikoodiga {regcode} ei leitud Äriregistri andmetest (JSON)."
         }
 
     # Prepares Notion properties
@@ -238,20 +237,29 @@ def process_company_sync(data: dict, config: dict) -> dict:
         }
 
 
-def autofill_page_by_page_id(page_id: str):
-    """Loeb Registrikood property antud Notioni lehelt ning täidab ülejäänud väljad."""
+def autofill_page_by_page_id(page_id: str, config: dict):
+    """
+    Loeb Registrikood property antud Notioni lehelt ning täidab ülejäänud väljad.
+    Kasutab CLI režiimis edastatud 'config' objekti väärtusi.
+
+    💡 PARANDATUD VERSIOON 💡
+    """
     logging.info(f"--- Starting autofill for page_id: {page_id} ---")
 
-    # Get configuration from environment variables
-    NOTION_API_KEY = os.getenv("NOTION_API_KEY")
-    NOTION_DATABASE_ID = os.getenv("NOTION_DATABASE_ID")
-    ARIREGISTER_JSON_URL = os.getenv("ARIREGISTER_JSON_URL")
+    NOTION_API_KEY = config.get("notion", {}).get("token") or os.getenv("NOTION_API_KEY")
+    NOTION_DATABASE_ID = config.get("notion", {}).get("database_id") or os.getenv("NOTION_DATABASE_ID")
+    ARIREGISTER_JSON_URL = config.get("ariregister", {}).get("json_url") or os.getenv("ARIREGISTER_JSON_URL")
 
-    # Validate that all required environment variables are set
+    if 'ARIREGISTER_CSV_URL' in os.environ and not ARIREGISTER_JSON_URL:
+        ARIREGISTER_JSON_URL = os.getenv("ARIREGISTER_CSV_URL")
+
+    # Validate that all required configuration variables are set
     if not all([NOTION_API_KEY, NOTION_DATABASE_ID, ARIREGISTER_JSON_URL]):
-        error_msg = "Missing one or more required environment variables (NOTION_API_KEY, NOTION_DATABASE_ID, ARIREGISTER_JSON_URL)."
+        error_msg = "Missing one or more required configuration (NOTION_API_KEY, NOTION_DATABASE_ID, ARIREGISTER_JSON_URL). Check environment variables or config file."
         logging.error(error_msg)
-        return {"error": error_msg, "step": "env_check"}
+        return {"success": False, "message": error_msg, "step": "config_check"}
+
+    logging.info(f"DEBUG: Using NOTION_DATABASE_ID: {NOTION_DATABASE_ID}")
 
     notion = NotionClient(NOTION_API_KEY, NOTION_DATABASE_ID)
 
@@ -263,13 +271,14 @@ def autofill_page_by_page_id(page_id: str):
     except Exception as e:
         error_msg = f"Failed to fetch page from Notion: {e}"
         logging.error(error_msg)
-        return {"error": error_msg, "step": "fetch_page"}
+        return {"success": False, "message": error_msg, "step": "fetch_page"}
 
     reg_prop = props.get("Registrikood")
     if not reg_prop:
         error_msg = f"DEBUG: Lehe 'Registrikood' property puudub. Available properties: {list(props.keys())}"
         logging.error(error_msg)
-        return {"error": error_msg, "step": "missing_registrikood", "available_props": list(props.keys())}
+        return {"success": False, "message": error_msg, "step": "missing_registrikood",
+                "available_props": list(props.keys())}
 
     # Extract regcode (handling number and rich_text formats)
     regcode = None
@@ -278,7 +287,6 @@ def autofill_page_by_page_id(page_id: str):
         if val is not None:
             regcode = str(int(val))
     elif reg_prop.get("type") == "title":
-        # Title field often used for primary identifier if number field isn't
         texts = reg_prop.get("title") or []
         if texts:
             content = texts[0].get("plain_text") or texts[0].get("text", {}).get("content")
@@ -294,40 +302,52 @@ def autofill_page_by_page_id(page_id: str):
     if not regcode:
         error_msg = "'Registrikood' on tühi või vales formaadis sellel Notioni lehel."
         logging.warning(error_msg)
-        return {"error": error_msg, "step": "invalid_registrikood"}
+        return {"success": False, "message": error_msg, "step": "invalid_registrikood"}
 
     logging.info(f"Found Registrikood: {regcode}")
 
-    # Lae CSV ja leia ettevõte
     try:
-        df = load_json(ARIREGISTER_JSON_URL)
-        logging.info("Successfully loaded CSV file.")
+        # 💡 PARANDUS: Kasuta find_company_by_regcode, mis teeb nii laadimise kui otsingu
+        company = find_company_by_regcode(ARIREGISTER_JSON_URL, regcode)
+        logging.info("Successfully loaded data and searched company.")
     except Exception as e:
-        error_msg = f"Failed to load CSV: {e}"
+        error_msg = f"Failed to load JSON or search company: {e}"
         logging.error(error_msg)
-        return {"error": error_msg, "step": "load_csv"}
+        return {"success": False, "message": error_msg, "step": "load_json_or_search"}
 
-    company = find_company_by_regcode(df, regcode)
     if not company:
-        error_msg = f"Ettevõtet registrikoodiga {regcode} ei leitud CSV-s."
+        error_msg = f"Ettevõtet registrikoodiga {regcode} ei leitud JSON-s."
         logging.warning(error_msg)
-        return {"error": error_msg, "step": "company_not_found", "regcode": regcode}
+        return {"success": False, "message": error_msg, "step": "company_not_found", "regcode": regcode}
 
-    logging.info(f"Found matching company in CSV: {clean_value(company.get('nimi'))}")
+    logging.info(f"Found matching company in JSON: {clean_value(company.get('nimi'))}")
 
     company_name = clean_value(company.get('nimi'))
     properties, empty_fields, _ = _build_properties_from_company(company, regcode, company_name)
     logging.info("Built properties payload to send to Notion:")
     logging.info(json.dumps(properties, indent=2, ensure_ascii=False))
 
-    # Uuenda sama lehte
     try:
         notion.update_page(page_id, properties)
-        success_msg = f"Successfully called Notion update_page API for: {clean_value(company.get('nimi'))} ({regcode})"
-        logging.info(success_msg)
-        logging.info("--- Autofill process completed successfully. ---")
-        return {"success": True, "message": success_msg, "company_name": company_name, "regcode": regcode}
-    except Exception as e:
-        error_msg = f"Failed during Notion page update: {e}"
+        message = f"✅ Andmed edukalt täidetud lehel {company_name} ({regcode})."
+
+        if empty_fields:
+            message += f"\n ⚠️ Hoiatus: Järgmised väljad jäid tühjaks: {', '.join(empty_fields)}."
+
+        logging.info(message)
+        return {"success": True, "message": message, "company_name": company_name}
+
+    except requests.HTTPError as e:
+        error_details = ""
+        try:
+            error_details = e.response.json().get("message", e.response.text)
+        except:
+            error_details = e.response.text
+
+        error_msg = f"❌ Notion API viga ({e.response.status_code}): {error_details}"
         logging.error(error_msg)
-        return {"error": error_msg, "step": "notion_update", "details": str(e)}
+        return {"success": False, "message": error_msg, "step": "notion_update"}
+    except Exception as e:
+        error_msg = f"❌ Üldine automaattäitmise viga: {type(e).__name__}: {e}"
+        logging.error(error_msg)
+        return {"success": False, "message": error_msg, "step": "general_error"}

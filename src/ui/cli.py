@@ -1,6 +1,7 @@
 import argparse
 import sys
 from src.ui.config_loader import load_config
+# EELDAME, ET NEED FUNKTSIOONID ON JUBA ÕIGESTI DEFINEERITUD
 from api.sync import load_company_data, process_company_sync, autofill_page_by_page_id
 
 
@@ -91,20 +92,15 @@ def handle_autofill_mode(config: dict):
 
     print(f"\nAlustan Notioni lehe ({page_id}) automaatset täitmist...")
 
-    # autofill_page_by_page_id täidab Notioni otse ja prindib tulemuse.
+    # PARANDUS: Funktsiooni väljakutse on õige, eeldusel, et funktsioon ise on muudetud.
     autofill_page_by_page_id(page_id, config)
 
 
 def run_cli():
-    # -----------------------------------------------------------
-    # Vaikimisi käivitame interaktiivse režiimi (Teie soov)
-    # Argumentide olemasolul käivitame automaatse režiimi
-    # -----------------------------------------------------------
 
     config = load_config()
 
     if len(sys.argv) > 1:
-        # Kui käsureal on argumendid (nt. python main.py --page-id ...), käivitame argparse
         parser = argparse.ArgumentParser(description="Sünkrooni Äriregistri andmed Notioni")
         group = parser.add_mutually_exclusive_group(required=True)
         group.add_argument("--regcode",

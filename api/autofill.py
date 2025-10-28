@@ -1,14 +1,13 @@
 from flask import Flask, request, redirect
 import os
 import traceback
-
-# Use relative imports to find files in the same directory.
 from .sync import autofill_page_by_page_id
-from .notion_client import NotionClient  # olemasolev NotionClient fail
+from .notion_client import NotionClient
+from .config import load_config
 
 app = Flask(__name__)
 
-# Function to update the new "Auto-fill Status" property in Notion
+
 def update_autofill_status(page_id: str, status_text: str):
     NOTION_API_KEY = os.getenv("NOTION_API_KEY")
     NOTION_DATABASE_ID = os.getenv("NOTION_DATABASE_ID")
@@ -22,12 +21,12 @@ def update_autofill_status(page_id: str, status_text: str):
         }
     })
 
+
 @app.route('/api/autofill', methods=['GET', 'POST'])
 def autofill():
     page_id = None
     notion_url = None
     try:
-        # Get pageId and Notion page URL from query parameters or JSON body
         if request.method == 'GET':
             page_id = request.args.get('pageId')
             notion_url = request.args.get('notionUrl')
@@ -39,8 +38,9 @@ def autofill():
         if not page_id or not notion_url:
             return "Missing pageId or notionUrl", 400
 
-        # Run autofill
-        result = autofill_page_by_page_id(page_id)
+        config = load_config() or {}
+
+        result = autofill_page_by_page_id(page_id, config)
 
         # Update Notion status property
         if result.get("success"):
@@ -71,6 +71,7 @@ def health_check():
         "status": "ok",
         "message": "Notion Autofill API is running",
     }
+
 
 # Local development
 if __name__ == "__main__":

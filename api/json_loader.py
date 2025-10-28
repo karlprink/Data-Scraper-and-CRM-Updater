@@ -17,7 +17,7 @@ def get_result_cache_path(target_code: str) -> str:
     return os.path.join(CACHE_DIR, f"cache_{target_code}.json")
 
 
-def load_json(url: str, target_code: str) -> dict | None:
+def load_json(url: str, target_code: None) -> dict | None:
     os.makedirs(CACHE_DIR, exist_ok=True)
     result_cache_file = get_result_cache_path(target_code)
 
