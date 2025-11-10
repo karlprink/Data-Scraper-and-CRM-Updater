@@ -1,5 +1,7 @@
 import os
+import yaml
 from typing import Dict, Any
+from pathlib import Path
 
 
 def load_config() -> Dict[str, Any]:
@@ -7,11 +9,11 @@ def load_config() -> Dict[str, Any]:
 
     notion_token = os.getenv('NOTION_API_KEY')
     notion_db = os.getenv('NOTION_DATABASE_ID')
-
     ariregister_url = os.getenv('ARIREGISTER_JSON_URL') or os.getenv('ARIREGISTER_CSV_URL')
 
+    # Kui kõik kolm on olemas, kasuta keskkonnamuutujaid (nt Vercel)
     if all([notion_token, notion_db, ariregister_url]):
-        print("Successfully loaded required configuration from environment variables.")
+        print("✅ Successfully loaded configuration from environment variables.")
         return {
             "notion": {
                 "token": notion_token,
@@ -22,6 +24,18 @@ def load_config() -> Dict[str, Any]:
             }
         }
 
-    print(
-        f"ERROR: One or more required environment variables are missing. Missing status: NOTION_API_KEY={bool(notion_token)}, NOTION_DATABASE_ID={bool(notion_db)}, ARIREGISTER_JSON_URL={bool(ariregister_url)}")
+    # Kui env pole olemas, proovi YAML-failist
+    print("⚠️ Environment variables not found. Trying to load from config.yaml...")
+
+    for path in [Path("config.yaml"), Path(__file__).parent.parent / "config.yaml"]:
+        if path.exists():
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    cfg = yaml.safe_load(f)
+                print(f"✅ Successfully loaded configuration from {path}")
+                return cfg
+            except Exception as e:
+                print(f"⚠️ Failed to load config from {path}: {e}")
+
+    print("❌ ERROR: No configuration found. Please check your environment or config.yaml file.")
     return {}

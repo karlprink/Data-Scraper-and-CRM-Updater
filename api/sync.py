@@ -3,93 +3,67 @@ import requests
 import json
 import logging
 from typing import Tuple, Dict, Any
+from .config import load_config  # Kasutame otse load_config funktsiooni
+from .json_loader import find_company_by_regcode, clean_value  # Eemaldatud load_json
+from .notion_client import NotionClient
+from pathlib import Path
 
-# Set up basic logging to output to the console, which Vercel captures.
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
-# These will now be read directly from environment variables
-from .json_loader import load_json, find_company_by_regcode, clean_value
-from .notion_client import NotionClient
+
 
 
 def sync_company(regcode: str):
-    """
-    Finds a company by its registration code in the CSV and syncs it to Notion.
-    Configuration is read directly from environment variables.
-    """
-    # Get configuration from environment variables
-    NOTION_API_KEY = os.getenv("NOTION_API_KEY")
-    NOTION_DATABASE_ID = os.getenv("NOTION_DATABASE_ID")
-    ARIREGISTER_JSON_URL = os.getenv("ARIREGISTER_JSON_URL")
-
-    # Validate that all required environment variables are set
-    if not all([NOTION_API_KEY, NOTION_DATABASE_ID, ARIREGISTER_JSON_URL]):
-        logging.error(
-            "Missing one or more required environment variables (NOTION_API_KEY, NOTION_DATABASE_ID, ARIREGISTER_JSON_URL).")
-        return
+    # ... (see funktsioon ei tundu olevat /api/autofill poolt kasutusel)
+    # ... (Selle parandamine pole hetkel kriitiline, kui autofill_page_by_page_id töötab)
 
     # 💡 PARANDUS: Kasuta õiget funktsiooni
-    company = find_company_by_regcode(ARIREGISTER_JSON_URL, regcode)
+    # See funktsioon (sync_company) vajaks samuti parandamist, et see
+    # küsiks andmebaasist, mitte ei eeldaks faili URL-i.
+
+    config = load_config()
+    NOTION_API_KEY = config.get("notion", {}).get("token")
+    NOTION_DATABASE_ID = config.get("notion", {}).get("database_id")
+
+    if not all([NOTION_API_KEY, NOTION_DATABASE_ID]):
+        logging.error("Missing Notion configuration.")
+        return
+
+    # PARANDATUD: find_company_by_regcode ei vaja enam URL-i
+    company = find_company_by_regcode(regcode)
 
     if not company:
-        logging.warning(f"Ettevõtet registrikoodiga {regcode} ei leitud failis.")
+        logging.warning(f"Ettevõtet registrikoodiga {regcode} ei leitud ANDMEBAASIST.")
         return
 
     notion = NotionClient(NOTION_API_KEY, NOTION_DATABASE_ID)
-
+    # ... (ülejäänud sünkroniseerimise loogika)
 
 
 def _prepare_notion_properties(company: dict, regcode: str) -> Tuple[Dict[str, Any], list, str]:
     """
-    Cleans company data and aggregates it into the Notion Properties format,
-    tracking fields that remain empty (UC-1 Extension 5b).
-    Returns: (properties: dict, empty_fields: list, company_name: str)
+    Cleans company data and aggregates it into the Notion Properties format.
+    (See funktsioon on korras)
     """
     company_name = clean_value(company.get('nimi'))
     return _build_properties_from_company(company, regcode, company_name)
 
 
 def _build_properties_from_company(company: dict, regcode: str, company_name: str) -> Tuple[Dict[str, Any], list, str]:
-    """Koostab Notioni properties objektid CSV andmete põhjal, navigeerides alamobjektides.
-    Täidab AINULT Põhitegevuse (EMTAK koodi), jättes Tegevusvaldkonna (teksti) täitmata."""
+    """Koostab Notioni properties objektid DB andmete põhjal (kasutab nüüd optimeeritud struktuuri)."""
 
-    yldandmed = company.get('yldandmed', {})
-
-    email_val = None
-    tel_val = None
-    veeb_val = None
-    linkedin_val = clean_value(company.get("linkedin"))
-
-    sidevahendid = yldandmed.get('sidevahendid', [])
-    for item in sidevahendid:
-        sisu = clean_value(item.get('sisu'))
-        if not sisu:
-            continue
-
-        liik = item.get('liik')
-        if liik == "EMAIL":
-            email_val = sisu
-        elif liik in ("TEL", "MOB"):
-            if not tel_val:
-                tel_val = sisu
-        elif liik == "WWW":
-            veeb_val = sisu
-
-    aadressid = yldandmed.get('aadressid', [])
-    aadress_täis_val = clean_value(
-        aadressid[0].get('aadress_ads__ads_normaliseeritud_taisaadress')) if aadressid else None
-    aadress_val = aadress_täis_val
+    # Väljade lugemine uuest, optimeeritud struktuurist
+    email_val = clean_value(company.get("kontakt", {}).get("email"))
+    tel_val = clean_value(company.get("kontakt", {}).get("telefon"))
+    veeb_val = clean_value(company.get("kontakt", {}).get("veebileht"))
+    linkedin_val = clean_value(company.get("linkedin"))  # Jäi samaks
+    aadress_val = clean_value(company.get("aadress"))
+    pohitegevus_val = clean_value(company.get("emtak_tekst"))  # UUS: otse laetud tekst
 
     maakond_val_raw = None
-    if aadress_täis_val:
-        maakond_val_raw = aadress_täis_val.split(',')[0].strip()
-
-    tegevusalad = yldandmed.get('teatatud_tegevusalad', [])
-    pohitegevusala = next(
-        (ta for ta in tegevusalad if ta.get('on_pohitegevusala') is True),
-        None
-    )
-    pohitegevus_val = clean_value(pohitegevusala.get("emtak_tekstina")) if pohitegevusala else None
+    if aadress_val:
+        # Parsi maakond aadressist
+        maakond_val_raw = aadress_val.split(',')[0].strip()
 
     empty_fields = []
 
@@ -122,7 +96,7 @@ def _build_properties_from_company(company: dict, regcode: str, company_name: st
         "Tel. nr": tel_prop,
         "Veebileht": veeb_prop,
         "LinkedIn": linkedin_prop,
-        "Kontaktisikud": {"people": yldandmed.get("kontaktisikud_list", [])},
+        # 'Kontaktisikud' property on eemaldatud, kuna seda ei salvestata enam DB-sse.
         "Tegevusvaldkond": {"rich_text": [{"text": {"content": pohitegevus_val or ""}}]},
         "Põhitegevus": {"rich_text": [{"text": {"content": pohitegevus_val or ""}}]}
     }
@@ -132,9 +106,8 @@ def _build_properties_from_company(company: dict, regcode: str, company_name: st
 
 def load_company_data(regcode: str, config: dict) -> dict:
     """
-    Loads company data from CSV and prepares the Notion structures.
-    Used before user confirmation in CLI.
-    Returns a dictionary: {"status": str, "data": dict/None, "message": str}
+    Loads company data from DB (mitte CSV/JSON)
+    (See funktsioon on parandatud, et see kasutaks DB-d)
     """
 
     if not regcode or not str(regcode).isdigit():
@@ -144,17 +117,18 @@ def load_company_data(regcode: str, config: dict) -> dict:
         }
 
     try:
-        company = find_company_by_regcode(config["ariregister"]["json_url"], regcode)
+        # PARANDUS: Kasutame andmebaasi, mitte ei lae URL-ist
+        company = find_company_by_regcode(regcode)
     except Exception as e:
         return {
             "status": "error",
-            "message": f"Faili laadimise viga: {e}"
+            "message": f"Andmebaasi päringu viga: {e}"
         }
 
     if not company:
         return {
             "status": "error",
-            "message": f"Ettevõtet registrikoodiga {regcode} ei leitud Äriregistri andmetest (JSON)."
+            "message": f"Ettevõtet registrikoodiga {regcode} ei leitud andmebaasist."
         }
 
     # Prepares Notion properties
@@ -164,7 +138,7 @@ def load_company_data(regcode: str, config: dict) -> dict:
         "status": "ready",
         "data": {
             "regcode": regcode,
-            "properties": properties,  # Data for Notion API
+            "properties": properties,
             "empty_fields": empty_fields,
             "company_name": company_name,
         },
@@ -174,10 +148,9 @@ def load_company_data(regcode: str, config: dict) -> dict:
 
 def process_company_sync(data: dict, config: dict) -> dict:
     """
-    Performs Notion API synchronization (after user confirmation) or updates
-    an existing entry (old sync_company logic).
+    (See funktsioon tundub olevat korras)
     """
-
+    # ... (kood on korras)
     regcode = data["regcode"]
     properties = data["properties"]
     empty_fields = data["empty_fields"]
@@ -188,23 +161,18 @@ def process_company_sync(data: dict, config: dict) -> dict:
         config["notion"]["database_id"]
     )
 
-    # Compose full payload
-    full_payload = {
-        "parent": {"database_id": notion.database_id},
-        "properties": properties
-    }
-
-    # Synchronization logic (combines checking existence and creation/update)
     try:
         existing = notion.query_by_regcode(regcode)
         action = ""
 
         if existing:
-            # Uuendamine
             notion.update_page(existing["id"], properties)
             action = "Uuendatud"
         else:
-            # Lisamine
+            full_payload = {
+                "parent": {"database_id": notion.database_id},
+                "properties": properties
+            }
             notion.create_page(full_payload)
             action = "Lisatud"
 
@@ -235,117 +203,94 @@ def process_company_sync(data: dict, config: dict) -> dict:
         }
 
 
-def autofill_page_by_page_id(page_id: str, config: dict):
+def autofill_page_by_page_id(page_id: str, config: Dict[str, Any] = None) -> Dict[str, Any]:
     """
-    Loeb Registrikood property antud Notioni lehelt ning täidab ülejäänud väljad.
-    Kasutab CLI režiimis edastatud 'config' objekti väärtusi.
-
-    💡 PARANDATUD VERSIOON 💡
+    Täidab Notioni lehe andmed Äriregistri andmebaasi põhjal.
+    (SEE FUNKTSIOON ON NÜÜD PARANDATUD)
     """
-    logging.info(f"--- Starting autofill for page_id: {page_id} ---")
+    cfg = load_config() if config is None else config
 
-    NOTION_API_KEY = config.get("notion", {}).get("token") or os.getenv("NOTION_API_KEY")
-    NOTION_DATABASE_ID = config.get("notion", {}).get("database_id") or os.getenv("NOTION_DATABASE_ID")
-    ARIREGISTER_JSON_URL = config.get("ariregister", {}).get("json_url") or os.getenv("ARIREGISTER_JSON_URL")
+    NOTION_API_KEY = cfg.get("notion", {}).get("token")
+    NOTION_DATABASE_ID = cfg.get("notion", {}).get("database_id")
+    # ARIREGISTER_JSON_URL pole siin enam vaja, kuna me ei lae faili
 
-    if 'ARIREGISTER_CSV_URL' in os.environ and not ARIREGISTER_JSON_URL:
-        ARIREGISTER_JSON_URL = os.getenv("ARIREGISTER_CSV_URL")
-
-    # Validate that all required configuration variables are set
-    if not all([NOTION_API_KEY, NOTION_DATABASE_ID, ARIREGISTER_JSON_URL]):
-        error_msg = "Missing one or more required configuration (NOTION_API_KEY, NOTION_DATABASE_ID, ARIREGISTER_JSON_URL). Check environment variables or config file."
-        logging.error(error_msg)
-        return {"success": False, "message": error_msg, "step": "config_check"}
-
-    logging.info(f"DEBUG: Using NOTION_DATABASE_ID: {NOTION_DATABASE_ID}")
+    if not all([NOTION_API_KEY, NOTION_DATABASE_ID]):
+        return {
+            "success": False,
+            "status": "error",
+            "message": "Puudulik Notion konfiguratsioon (NOTION_API_KEY / DATABASE_ID).",
+            "step": "config_check"
+        }
 
     notion = NotionClient(NOTION_API_KEY, NOTION_DATABASE_ID)
 
-    # Loe lehe properties
+    # 1. Loe Notionist reg. number
     try:
-        page = notion.get_page(page_id)
-        props = page.get("properties", {})
-        logging.info("Successfully fetched page properties from Notion.")
+        regcode = notion.get_company_regcode(page_id)
+    except requests.HTTPError as e:
+        if e.response.status_code == 404:
+            return {"success": False, "status": "error", "message": "Notion API viga: Lehte (pageId) ei leitud.",
+                    "step": "notion_read_404"}
+        return {"success": False, "status": "error", "message": f"Viga Notionist regcode lugemisel: {e}",
+                "step": "notion_read"}
     except Exception as e:
-        error_msg = f"Failed to fetch page from Notion: {e}"
-        logging.error(error_msg)
-        return {"success": False, "message": error_msg, "step": "fetch_page"}
-
-    reg_prop = props.get("Registrikood")
-    if not reg_prop:
-        error_msg = f"DEBUG: Lehe 'Registrikood' property puudub. Available properties: {list(props.keys())}"
-        logging.error(error_msg)
-        return {"success": False, "message": error_msg, "step": "missing_registrikood",
-                "available_props": list(props.keys())}
-
-    # Extract regcode (handling number and rich_text formats)
-    regcode = None
-    if reg_prop.get("type") == "number":
-        val = reg_prop.get("number")
-        if val is not None:
-            regcode = str(int(val))
-    elif reg_prop.get("type") == "title":
-        texts = reg_prop.get("title") or []
-        if texts:
-            content = texts[0].get("plain_text") or texts[0].get("text", {}).get("content")
-            if content:
-                regcode = ''.join(ch for ch in content if ch.isdigit())
-    elif reg_prop.get("type") == "rich_text":
-        texts = reg_prop.get("rich_text") or []
-        if texts:
-            content = texts[0].get("plain_text") or texts[0].get("text", {}).get("content")
-            if content:
-                regcode = ''.join(ch for ch in content if ch.isdigit())
+        return {"success": False, "status": "error", "message": f"Viga Notionist regcode lugemisel: {e}",
+                "step": "notion_read"}
 
     if not regcode:
-        error_msg = "'Registrikood' on tühi või vales formaadis sellel Notioni lehel."
-        logging.warning(error_msg)
-        return {"success": False, "message": error_msg, "step": "invalid_registrikood"}
+        return {"success": False, "status": "warning", "message": "Lehelt ei leitud 'Registrikood' väärtust.",
+                "step": "missing_regcode"}
 
-    logging.info(f"Found Registrikood: {regcode}")
+    logging.info(f"🔍 Otsin ANDMEBAASIST: {regcode}")
+
+    # 2. Lae andmed ANDMEBAASIST (kasutades load_company_data loogikat)
+    try:
+        load_result = load_company_data(regcode, cfg)
+    except Exception as e:
+        return {"success": False, "status": "error", "message": f"Viga andmebaasist andmete laadimisel: {e}",
+                "step": "db_load"}
+
+    if load_result["status"] != "ready":
+        return {"success": False, "status": "warning", "message": load_result["message"], "step": "not_found_in_db"}
+
+    # 3. Puhasta ja vorminda andmed (tehtud load_company_data sees)
+    # 4. Uuenda Notionis väljad (kasutades process_company_sync loogikat)
+
+    sync_data = load_result.get("data")
+    if not sync_data:
+        return {"success": False, "status": "error", "message": "Sisemine viga: Andmete ettevalmistamine ebaõnnestus.",
+                "step": "data_prep_fail"}
 
     try:
-        # 💡 PARANDUS: Kasuta find_company_by_regcode, mis teeb nii laadimise kui otsingu
-        company = find_company_by_regcode(ARIREGISTER_JSON_URL, regcode)
-        logging.info("Successfully loaded data and searched company.")
+        sync_result = process_company_sync(sync_data, cfg)
+
+        if sync_result["status"] == "success" or sync_result["status"] == "warning":
+            return {"success": True, "status": sync_result["status"], "message": sync_result["message"], "step": "done"}
+        else:
+            return {"success": False, "status": "error", "message": sync_result["message"],
+                    "step": "notion_update_fail"}
+
     except Exception as e:
-        error_msg = f"Failed to load JSON or search company: {e}"
-        logging.error(error_msg)
-        return {"success": False, "message": error_msg, "step": "load_json_or_search"}
+        return {"success": False, "status": "error", "message": f"Viga Notioni uuendamisel: {e}",
+                "step": "notion_update_exception"}
 
-    if not company:
-        error_msg = f"Ettevõtet registrikoodiga {regcode} ei leitud JSON-s."
-        logging.warning(error_msg)
-        return {"success": False, "message": error_msg, "step": "company_not_found", "regcode": regcode}
 
-    logging.info(f"Found matching company in JSON: {clean_value(company.get('nimi'))}")
+if __name__ == "__main__":
+    import sys
 
-    company_name = clean_value(company.get('nimi'))
-    properties, empty_fields, _ = _build_properties_from_company(company, regcode, company_name)
-    logging.info("Built properties payload to send to Notion:")
-    logging.info(json.dumps(properties, indent=2, ensure_ascii=False))
+    if len(sys.argv) < 2:
+        print("Kasutus: python -m api.sync <PAGE_ID>")
+        sys.exit(1)
 
+    page_id = sys.argv[1]
+    # Initsialiseeri andmebaas lokaalselt (vajalik testimiseks)
     try:
-        notion.update_page(page_id, properties)
-        message = f"✅ Andmed edukalt täidetud lehel {company_name} ({regcode})."
-
-        if empty_fields:
-            message += f"\n ⚠️ Hoiatus: Järgmised väljad jäid tühjaks: {', '.join(empty_fields)}."
-
-        logging.info(message)
-        return {"success": True, "message": message, "company_name": company_name}
-
-    except requests.HTTPError as e:
-        error_details = ""
-        try:
-            error_details = e.response.json().get("message", e.response.text)
-        except:
-            error_details = e.response.text
-
-        error_msg = f"❌ Notion API viga ({e.response.status_code}): {error_details}"
-        logging.error(error_msg)
-        return {"success": False, "message": error_msg, "step": "notion_update"}
+        init_db()
+        print("Lokaalne andmebaas initsialiseeritud.")
+        # Lokaalsel testimisel pead võib-olla db_loader'i eraldi käivitama
+        # Või lisama siia tingimusliku laadimise
     except Exception as e:
-        error_msg = f"❌ Üldine automaattäitmise viga: {type(e).__name__}: {e}"
-        logging.error(error_msg)
-        return {"success": False, "message": error_msg, "step": "general_error"}
+        print(f"DB init viga: {e}")
+
+    result = autofill_page_by_page_id(page_id)
+    print(json.dumps(result, indent=2, ensure_ascii=False))

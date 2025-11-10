@@ -15,8 +15,18 @@
       "dest": "api/autofill.py"
     },
     {
+      "src": "/api/cron/load-db",
+      "dest": "api/autofill.py"
+    },
+    {
       "src": "/",
       "dest": "api/autofill.py"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/load-db",
+      "schedule": "0 5 * * *"
     }
   ]
 }
