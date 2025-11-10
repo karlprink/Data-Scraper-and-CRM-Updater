@@ -118,7 +118,7 @@ def autofill():
         if result.get("success"):
             update_autofill_status(page_id, "Success", config)
         else:
-            error_message = result.get("message") or "Tundmatu viga"
+            error_message = result.get("message") or "Tundmatu viga "
             update_autofill_status(page_id, f"Error: {error_message}", config)
 
         status = "Edukas" if result.get("success") else "Viga"
