@@ -17,7 +17,6 @@ def find_company_by_regcode(url: str, regcode: str):
 
     conn = get_db_connection()
     cur = conn.cursor()
-
     query = "SELECT data_json FROM companies WHERE regcode = %s"
     param = (regcode,)
 

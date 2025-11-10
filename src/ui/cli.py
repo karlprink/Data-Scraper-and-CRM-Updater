@@ -1,9 +1,34 @@
 import argparse
+import os
 import sys
 from src.ui.config_loader import load_config
-# EELDAME, ET NEED FUNKTSIOONID ON JUBA ÕIGESTI DEFINEERITUD
 from api.sync import load_company_data, process_company_sync, autofill_page_by_page_id
+from api.db import init_db
+from api.db_loader import load_to_db
 
+DEFAULT_JSON_URL = "https://avaandmed.ariregister.rik.ee/sites/default/files/avaandmed/ettevotja_rekvisiidid__yldandmed.json.zip"
+
+JSON_ZIP_URL = os.getenv("ARIREGISTER_JSON_URL", DEFAULT_JSON_URL)
+
+
+def ensure_db_and_load():
+    """Kontrollib, kas tabel on olemas ja laeb andmed vajadusel."""
+    init_db()  # loob tabeli kui seda pole
+
+    from api.db import get_db_connection
+    from api.db import IS_POSTGRES
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) FROM companies")
+    count = cur.fetchone()[0] if not IS_POSTGRES else cur.fetchone()["count"]
+    conn.close()
+
+    if count == 0:
+        print("ℹ️ Andmebaas tühi, laadime andmed...")
+        load_to_db(JSON_ZIP_URL)
+    else:
+        print(f"ℹ️ Andmebaasis juba {count} kirjet.")
 
 def print_properties(properties: dict):
     """Prints the Notion properties output in a readable format."""
@@ -99,6 +124,7 @@ def handle_autofill_mode(config: dict):
 def run_cli():
 
     config = load_config()
+    ensure_db_and_load()
 
     if len(sys.argv) > 1:
         parser = argparse.ArgumentParser(description="Sünkrooni Äriregistri andmed Notioni")
