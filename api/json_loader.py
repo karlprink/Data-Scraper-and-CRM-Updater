@@ -1,89 +1,45 @@
-import os
-import time
 import json
-import zipfile
-import requests
-import ijson
-import math
-from datetime import timedelta
-
-CACHE_DIR = "/tmp/cache"
-CACHE_FILE_PATH = os.path.join(CACHE_DIR, "ariregister_data.zip")
-CACHE_EXPIRATION = timedelta(hours=24)
+import os
+from datetime import datetime, timedelta
+from .db import get_db_connection
 
 
 
-def get_result_cache_path(target_code: str) -> str:
-    """Loob vahemälu failitee konkreetsele registrikoodile."""
-    return os.path.join(CACHE_DIR, f"cache_{target_code}.json")
+def load_json(file_path):
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"Faili ei leitud: {file_path}")
+    with open(file_path, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 
-def load_json(url: str, target_code: None) -> dict | None:
-    os.makedirs(CACHE_DIR, exist_ok=True)
-    result_cache_file = get_result_cache_path(target_code)
+def find_company_by_regcode(url: str, regcode: str):
+    """Tagastab ettevõtte andmed andmebaasist (andmed eeldatakse alati ajakohased)."""
 
-    if os.path.exists(result_cache_file):
-        file_mod_time = os.path.getmtime(result_cache_file)
-        if (time.time() - file_mod_time) < CACHE_EXPIRATION.total_seconds():
-            print(f"CACHE HIT: Leitud vahemällust andmed registrikoodile {target_code}.")
-            with open(result_cache_file, "r", encoding="utf-8") as f:
-                return json.load(f)
+    conn = get_db_connection()
+    cur = conn.cursor()
 
-    # download zip or used already existing from cache
-    if (not os.path.exists(CACHE_FILE_PATH)) or (
-            time.time() - os.path.getmtime(CACHE_FILE_PATH)
-    ) > CACHE_EXPIRATION.total_seconds():
-        print(f"CACHE MISS: Laen alla uue ZIP-faili: {url}")
-        headers = {"User-Agent": "Mozilla/5.0"}
+    query = "SELECT data_json FROM companies WHERE regcode = %s"
+    param = (regcode,)
 
-        # prevents loading the whole file into memory
-        with requests.get(url.strip(), headers=headers, stream=True) as r:
-            r.raise_for_status()
-            os.makedirs(os.path.dirname(CACHE_FILE_PATH), exist_ok=True)
-            with open(CACHE_FILE_PATH, "wb") as f:
-                for chunk in r.iter_content(chunk_size=1024 * 1024):  # 1MB tükid
-                    f.write(chunk)
-        print("ZIP file allalaaditud ja cache'i salvestatud.")
-    else:
-        print("Kasutan olemasolevat ZIP cache faili.")
+    # SQLite puhul muuda query vastavalt
+    if isinstance(regcode, str) and not hasattr(cur, "mogrify"):
+        query = "SELECT data_json FROM companies WHERE regcode = ?"
 
-    with zipfile.ZipFile(CACHE_FILE_PATH) as z:
-        json_filename = z.namelist()[0]
-        with z.open(json_filename) as f:
-            print(f"Edastan JSON-i ZIP-i seest ({json_filename}) ja otsin {target_code} ...")
+    cur.execute(query, param)
+    row = cur.fetchone()
+    conn.close()
 
-            try:
-                for obj in ijson.items(f, "item"):
-                    if str(obj.get("ariregistri_kood")) == str(target_code):
-                        print(f"✅ Ettevõte {target_code} leitud, salvestan tulemuse cache'i.")
-                        with open(result_cache_file, "w", encoding="utf-8") as out:
-                            json.dump(obj, out, ensure_ascii=False, indent=2)
-                        return obj
-            except ijson.common.IncompleteJSONError:
-                print("Hoiatus: JSON-i parsimine lõppes enneaegselt (võib olla ZIP-i viga).")
-
-    print(f"⚠️ Ettevõtet registrikoodiga {target_code} ei leitud andmestikus.")
-    return None
-
-def clean_value(val):
-    """Puhastab väärtused Notion API jaoks."""
-    if val is None:
+    if not row:
+        print(f"⚠️ Ettevõtet registrikoodiga {regcode} ei leitud.")
         return None
-    if isinstance(val, float) and math.isnan(val):
-        return None
-    if isinstance(val, str):
-        val = val.strip()
-        if val == "":
-            return None
-    return val
+
+    data_json = row["data_json"] if isinstance(row, dict) else row[0]
+    return json.loads(data_json)
 
 
-def find_company_by_regcode(url: str, regcode: str) -> dict | None:
-    """
-    Ühendab JSON ZIP laadimise ja kirje otsingu ühte funktsiooni.
-    Tagastab ettevõtte kirje dict-formaadis või None kui ei leitud.
-    """
-    data = load_json(url, regcode)
-    if data:
-        return {k: clean_value(v) for k, v in data.items()}
-    return None
+def clean_value(value):
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value.strip()
+    return str(value)
