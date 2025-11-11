@@ -210,9 +210,6 @@ def _build_properties_from_company(company: Dict[str, Any], regcode: str, compan
         parts = aadress_täis_val.split(',')
         maakond_val_raw = parts[0].strip() if parts else None
 
-        # Remove " maakond" suffix for cleaner Notion tag
-        if maakond_val_raw and maakond_val_raw.lower().endswith(" maakond"):
-            maakond_val_raw = maakond_val_raw[:-len(" maakond")].strip()
 
     # Extract main activity (Põhitegevus)
     tegevusalad = yldandmed.get('teatatud_tegevusalad', [])
