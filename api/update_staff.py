@@ -3,10 +3,12 @@ import traceback
 import json
 import requests
 from typing import Dict, Any, List
+from gemini import run_full_staff_search
+import os
 
 # Assuming these are relative imports in the project structure
-from .notion_client import NotionClient
-from .config import load_config
+from notion_client import NotionClient
+from config import load_config
 
 # --- Flask App Initialization ---
 app = Flask(__name__)
@@ -138,34 +140,27 @@ def update_staff():
     """
     The main endpoint for updating staff/contact persons on a Notion page.
 
-    It loads configuration, extracts page ID and properties data from the request,
-    updates the Notion page properties, and renders an HTML feedback page.
+    It loads configuration, extracts page ID and website URL, runs Gemini to get staff information
+    from the company website, updates the Notion page properties, and renders an HTML feedback page.
 
     Expected request format:
-    - pageId: The Notion page ID (required)
-    - properties: Dictionary of property names and values to update (required)
-        Example: {
-            "Nimi": "John Doe",
-            "Email": "john@example.com",
-            "Telefoninumber": "+372 12345678",
-            "Ettevõte": ["company-page-id-1"]  // Relation property
-        }
+    - websiteUrl: The company website URL to search for staff information (required)
+    - pageId: Optional Notion page ID (used only to get property types for reference)
     - notionUrl: Optional redirect URL back to Notion page
     """
     page_id = None
     notion_url = None
-    properties_data = None
+    website_url = None
 
     # Load configuration from environment variables
     config = load_config()
 
     # Configuration validation (essential for the API to run)
-    NOTION_API_KEY = config.get("notion", {}).get("token")
-    NOTION_DATABASE_ID = config.get("notion", {}).get("database_id")
+    NOTION_API_KEY = os.getenv("NOTION_API_KEY_UPDATE_STAFF")
+    NOTION_DATABASE_ID = os.getenv("NOTION_DATABASE_ID_UPDATE_STAFF")
     print("================================================")
     print(NOTION_API_KEY, NOTION_DATABASE_ID)
     print("================================================")
-
 
     if not all([NOTION_API_KEY, NOTION_DATABASE_ID]):
         error_msg = "Critical API Error: Missing configuration (NOTION_API_KEY, NOTION_DATABASE_ID). Check Vercel/Environment settings."
@@ -179,120 +174,178 @@ def update_staff():
         ), 500
 
     try:
-        # Extract page_id, notion_url, and properties from request
+        # Extract page_id, notion_url, and website_url from request
         if request.method == 'GET':
             page_id = request.args.get('pageId')
             notion_url = request.args.get('notionUrl')
-            # For GET requests, properties can be passed as JSON string
-            properties_json = request.args.get('properties')
-            if properties_json:
-                try:
-                    properties_data = json.loads(properties_json)
-                except json.JSONDecodeError:
-                    properties_data = None
+            website_url = request.args.get('websiteUrl')
         else:  # POST
             data = request.get_json() or {}
             page_id = data.get('pageId') or request.args.get('pageId')
             notion_url = data.get('notionUrl') or request.args.get('notionUrl')
-            properties_data = data.get('properties')
+            website_url = data.get('websiteUrl') or request.args.get('websiteUrl')
 
-        if not page_id:
+        if not website_url:
             return render_template_string(
                 HTML_TEMPLATE,
                 status="Viga",
                 status_class="error",
-                message="Critical Error: Required 'pageId' parameter is missing.",
-                debug_info="Please check the Notion formula setup."
+                message="Critical Error: Required 'websiteUrl' parameter is missing. Please provide the company website URL.",
+                debug_info='Example: {"websiteUrl": "https://example.com"}'
             ), 400
 
-        if not properties_data:
+        # Validate website URL format
+        if not website_url.startswith(('http://', 'https://')):
+            website_url = 'https://' + website_url
+
+        print(f"Searching for staff information on: {website_url}")
+
+        # Use Gemini to find staff information
+        staff_data = run_full_staff_search(website_url)
+
+        if staff_data is None:
             return render_template_string(
                 HTML_TEMPLATE,
                 status="Viga",
                 status_class="error",
-                message="Critical Error: Required 'properties' parameter is missing. Expected a dictionary of property names and values.",
-                debug_info='Example: {"properties": {"Nimi": "John Doe", "Email": "john@example.com"}}'
+                message="Error: Could not fetch or analyze the website content. Please check the website URL and try again.",
+                redirect_url=notion_url,
+                debug_info=f"Website URL: {website_url}"
             ), 400
 
-        # Validate properties_data format
-        if not isinstance(properties_data, dict):
+        if not staff_data or len(staff_data) == 0:
             return render_template_string(
                 HTML_TEMPLATE,
-                status="Viga",
-                status_class="error",
-                message="Error: 'properties' must be a dictionary/object.",
-                debug_info=f"Received type: {type(properties_data).__name__}"
-            ), 400
+                status="Hoiatus",
+                status_class="warning",
+                message="⚠️ No staff information found on the website. The website may not contain contact information for the specified roles (CEO, HR Manager, Head of Marketing, Head of Sales, or General Contact).",
+                redirect_url=notion_url,
+                debug_info=f"Website URL: {website_url}"
+            ), 200
 
         # Initialize Notion client
         notion = NotionClient(NOTION_API_KEY, NOTION_DATABASE_ID)
 
-        # Fetch page to verify it exists and get property types
+        # Get property types from database schema or from a page if pageId is provided
         page_properties = None
         try:
-            page_data = notion.get_page(page_id)
-            page_properties = page_data.get("properties", {})
-            available_properties = list(page_properties.keys())
-            print(f"Available properties on page: {available_properties}")
+            if page_id:
+                # Try to get properties from a specific page
+                try:
+                    page_data = notion.get_page(page_id)
+                    page_properties = page_data.get("properties", {})
+                    available_properties = list(page_properties.keys())
+                    print(f"Available properties on page: {available_properties}")
+                except Exception as e:
+                    print(f"Warning: Could not fetch page to check properties: {e}")
+            else:
+                # Get properties from database schema directly
+                try:
+                    database_data = notion.get_database()
+                    page_properties = database_data.get("properties", {})
+                    available_properties = list(page_properties.keys())
+                    print(f"Available properties in database: {available_properties}")
+                except Exception as e:
+                    print(f"Warning: Could not fetch database schema: {e}")
         except Exception as e:
-            print(f"Warning: Could not fetch page to check properties: {e}")
+            print(f"Warning: Could not get property types: {e}")
 
-        # Convert properties to Notion API format (pass page_properties to check types)
-        notion_properties = _build_notion_properties(properties_data, page_properties)
-        
-        print(f"Properties being sent to Notion: {json.dumps(notion_properties, indent=2, ensure_ascii=False)}")
+        # Create a page for each staff member found
+        created_count = 0
+        failed_count = 0
+        errors = []
 
-        if not notion_properties:
-            return render_template_string(
-                HTML_TEMPLATE,
-                status="Viga",
-                status_class="error",
-                message="Error: No valid properties found to update.",
-                debug_info="Please check that property names match your Notion database."
-            ), 400
-
-        # Update the Notion page
-        try:
-            notion.update_page(page_id, notion_properties)
-        except requests.HTTPError as e:
-            # Extract detailed error message from Notion API
-            error_details = ""
+        for staff_member in staff_data:
             try:
-                error_response = e.response.json()
-                error_details = error_response.get("message", str(e.response.text))
-                print(f"Notion API Error Details: {error_details}")
-                print(f"Request payload: {json.dumps({'properties': notion_properties}, indent=2, ensure_ascii=False)}")
-            except:
-                error_details = e.response.text if hasattr(e, 'response') else str(e)
-            
-            return render_template_string(
-                HTML_TEMPLATE,
-                status="Viga",
-                status_class="error",
-                message=f"❌ Notion API Error ({e.response.status_code if hasattr(e, 'response') else 'Unknown'}): {error_details}",
-                redirect_url=notion_url,
-                debug_info=json.dumps({
-                    "error": error_details,
-                    "properties_sent": notion_properties,
-                    "page_id": page_id
-                }, indent=2, ensure_ascii=False)
-            ), 400
+                # Map Gemini staff data to Notion properties
+                properties_data = {
+                    "Nimi": staff_member.get('name'),
+                    "Name": staff_member.get('role'),  # Role goes in "Name" field
+                    "Email": staff_member.get('email') if staff_member.get('email') else None,
+                    "Telefoninumber": staff_member.get('phone') if staff_member.get('phone') else None,
+                }
 
-        # Success result
-        updated_count = len(notion_properties)
-        updated_fields = ", ".join(notion_properties.keys())
-        result = {
-            "success": True,
-            "message": f"✅ Kontaktisiku andmed edukalt uuendatud. Uuendatud väljad: {updated_fields}.",
-            "updated_fields": list(notion_properties.keys()),
-            "updated_count": updated_count
-        }
+                # Add company relation if page_id is available (assuming it's the company page)
+                # This might need adjustment based on your Notion structure
+                # properties_data["Ettevõte"] = [page_id]
+
+                # Convert properties to Notion API format (pass page_properties to check types)
+                notion_properties = _build_notion_properties(properties_data, page_properties)
+                
+                if not notion_properties:
+                    print(f"Warning: No valid properties for staff member: {staff_member.get('name')}")
+                    failed_count += 1
+                    errors.append(f"No valid properties for {staff_member.get('name')}")
+                    continue
+
+                print(f"Creating page for {staff_member.get('name')} ({staff_member.get('role')})")
+                print(f"Properties: {json.dumps(notion_properties, indent=2, ensure_ascii=False)}")
+
+                # Create a new page in the database
+                full_payload = {
+                    "parent": {"database_id": NOTION_DATABASE_ID},
+                    "properties": notion_properties
+                }
+
+                notion.create_page(full_payload)
+                created_count += 1
+                print(f"✅ Successfully created page for {staff_member.get('name')}")
+
+            except requests.HTTPError as e:
+                # Extract detailed error message from Notion API
+                error_details = ""
+                try:
+                    error_response = e.response.json()
+                    error_details = error_response.get("message", str(e.response.text))
+                except:
+                    error_details = e.response.text if hasattr(e, 'response') else str(e)
+                
+                failed_count += 1
+                staff_name = staff_member.get('name', 'Unknown')
+                errors.append(f"{staff_name}: {error_details}")
+                print(f"❌ Failed to create page for {staff_name}: {error_details}")
+
+            except Exception as e:
+                failed_count += 1
+                staff_name = staff_member.get('name', 'Unknown')
+                error_msg = f"{type(e).__name__}: {str(e)}"
+                errors.append(f"{staff_name}: {error_msg}")
+                print(f"❌ Error creating page for {staff_name}: {error_msg}")
+
+        # Prepare result message
+        staff_found_count = len(staff_data)
+        
+        if created_count == 0:
+            # All failed
+            status_text = "Viga"
+            status_class = "error"
+            result_message = f"❌ Ei õnnestunud luua ühtegi kontaktisiku lehte. Leitud {staff_found_count} kontaktisikut veebilehelt."
+            if errors:
+                result_message += f" Vead: {'; '.join(errors[:3])}"  # Show first 3 errors
+        elif failed_count > 0:
+            # Partial success
+            status_text = "Osaline edu"
+            status_class = "warning"
+            result_message = f"⚠️ Loodud {created_count} kontaktisiku lehte {staff_found_count} leitud kontaktisikust. {failed_count} ebaõnnestus."
+            if errors:
+                result_message += f" Vead: {'; '.join(errors[:3])}"  # Show first 3 errors
+        else:
+            # All succeeded
+            status_text = "Edukas"
+            status_class = "success"
+            result_message = f"✅ Edukalt loodud {created_count} kontaktisiku lehte veebilehelt leitud kontaktisikute põhjal."
 
         # Prepare response for the user's browser (Estonian status texts)
-        status_text = "Edukas"
-        status_class = "success"
-        message = result.get("message")
+        message = result_message
         debug_info = None
+        if errors and len(errors) > 3:
+            # Include all errors in debug info if there are many
+            debug_info = json.dumps({
+                "total_staff_found": staff_found_count,
+                "created": created_count,
+                "failed": failed_count,
+                "all_errors": errors
+            }, indent=2, ensure_ascii=False)
 
         return render_template_string(
             HTML_TEMPLATE,

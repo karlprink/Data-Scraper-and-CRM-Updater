@@ -34,6 +34,13 @@ class NotionClient:
         r.raise_for_status()
         return r.json()
 
+    def get_database(self):
+        """Retrieves database schema/properties."""
+        url = f"https://api.notion.com/v1/databases/{self.database_id}"
+        r = requests.get(url, headers=self.headers)
+        r.raise_for_status()
+        return r.json()
+
     def query_by_regcode(self, regcode: str):
         """Searches for a page by registry code."""
         url = f"https://api.notion.com/v1/databases/{self.database_id}/query"
