@@ -19,8 +19,8 @@ from .notion_client import NotionClient
 
 # ⚠️ TESTIMISEKS: asenda oma päris võtmetega.
 # Productionis vii see ENV muutujate peale.
-GOOGLE_API_KEY = "PASTE_GOOGLE_API_KEY_HERE"
-GOOGLE_CSE_CX = "PASTE_CSE_ID_HERE"
+GOOGLE_API_KEY = "AIzaSyAzB4rD0pNGizFD9vxKnNRVqXtZ5VKzKUg"
+GOOGLE_CSE_CX = "56e45d069871c4ec6"
 
 # Must nimekiri domeenidest, mida EI taha "koduleheks"
 BLACKLIST_HOSTS = {
