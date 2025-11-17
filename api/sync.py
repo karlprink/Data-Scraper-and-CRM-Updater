@@ -6,6 +6,8 @@ from typing import Tuple, Dict, Any, Optional
 from urllib.parse import urlparse
 import re
 
+from test.test_sync import load_config
+
 # Set up basic logging
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
@@ -17,10 +19,9 @@ from .notion_client import NotionClient
 # GOOGLE CUSTOM SEARCH – kodulehe leidmine, kui Äriregistris WWW puudub
 # --------------------------------------------------------------------
 
-# ⚠️ TESTIMISEKS: asenda oma päris võtmetega.
-# Productionis vii see ENV muutujate peale.
-GOOGLE_API_KEY = "AIzaSyAzB4rD0pNGizFD9vxKnNRVqXtZ5VKzKUg"
-GOOGLE_CSE_CX = "56e45d069871c4ec6"
+config = load_config()
+GOOGLE_API_KEY = config.get("google", {}).get("api_key")
+GOOGLE_CSE_CX = config.get("google", {}).get("cse_cx")
 
 # Must nimekiri domeenidest, mida EI taha "koduleheks"
 BLACKLIST_HOSTS = {
