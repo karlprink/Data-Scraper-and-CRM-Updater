@@ -10,7 +10,7 @@ import json
 load_dotenv()
 
 # Konfigureerin kliendi
-genai.configure(api_key=YOUR_API_KEY)
+genai.configure(api_key="AIzaSyBX13A1LO7gwcnQQl3WAkrFLp18YsucGUA")
 
 
 try:
@@ -93,7 +93,7 @@ def find_contact_page_url(base_url):
         {" :: ".join(unique_links[:100])} 
         ---
         
-        Please respond with only the single, most suitable URL. If url includes "team", "tiim", "meeskond", "staff", "team members", "tootajad", "töötajad" then this is most likely the best URL. If none are suitable, return: "NONE"
+        Please respond with only the single, most suitable URL. If url includes "team", "tiim", "meeskond", "staff", "team members", "tootajad", "töötajad" then this is most likely the best URL. Url containing "meist" is probably not the best URL. If none are suitable, return: "NONE"
         """
 
         print(prompt)
@@ -115,91 +115,102 @@ def find_contact_page_url(base_url):
 
 
 def run_full_staff_search(base_url):
-  
-  # 1. Samm: Leia õige alamleht (nt /meeskond)
-  contact_page_url = find_contact_page_url(base_url)
-  
-  # 2. Samm: Lae selle alamlehe sisu alla
-  print(f"\nSamm 2: Sisu allalaadimine tuvastatud lehelt...")
-  website_text = get_website_text(contact_page_url)
-  
-  if not website_text:
-      print("Ei saanud veebilehe sisu kätte. Katkestan.")
-      return
-
-  # 3. Samm: Koosta uus prompt ja saada Geminile
-  prompt = f"""
-  Your task is to act as a data analyst. Analyze the following website text and extract
-  contact information for specific roles only.
-
-  Return the data ONLY as a JSON array. Each object in the array must be in
-  the following format:
-  {{
-    "name": "Name Here",
-    "role": "Role Title Here",
-    "email": "email address OR null",
-    "phone": "phone number OR null"
-  }}
-
-  KEY ROLES TO FIND (by priority):
-  I am interested ONLY in these roles. Please include Estonian equivalents.
-
-  1. STRATEGIC LEADERSHIP:
-     - 'CEO', 'Tegevjuht'
-
-  2. PERSONNEL / MARKETING:
-     - 'HR Manager', 'Personalijuht'
-     - 'Head of Marketing', 'Turundusjuht'
-     - 'Head of Sales', 'Müügijuht'
-  
-  3. GENERAL CONTACT:
-     - 'General Contact'
-
-  RULES:
-  1. Find the name, role, email, AND phone number.
-  2. If email or phone is not found, set the value to `null` (not "MISSING" or similar).
-  3. Ignore all other roles that are not in the list above (e.g., "Project Manager", "Specialist" are too general).
-  4. If you find a general contact (like "info@..." or a general phone number), add it as a separate object where the `role` is "General Contact".
-  5. If you do not find ANY relevant contacts, return ONLY an empty array `[]`.
-  6. Do not add anything else to your response (like "Here is the JSON:", "```json") besides the JSON itself.
-  
- 
-  TEXT CONTENT:
-  ---
-  {website_text[:30000]} 
-  ---
-  Finish analysis and return ONLY JSON.
-  """
-  
-  print("\nSamm 3: Puhastatud teksti saatmine Geminile analüüsimiseks...")
-  try:
-    response = model.generate_content(prompt)
+    """
+    Searches for staff information on a company website using Gemini AI.
     
-    print("\n--- Vastus (Manuaalse Sisuga) ---")
-    # Puhastame vastuse, et näidata ainult JSON-i
-    json_response = response.text.strip().lstrip("```json").lstrip("```").rstrip("```")
+    Args:
+        base_url: The company website URL
+        
+    Returns:
+        List of dictionaries containing staff information, each with:
+        - name: Staff member's name
+        - role: Their role/title
+        - email: Email address (or None)
+        - phone: Phone number (or None)
+        
+        Returns None if there was an error fetching the website content.
+    """
+    # 1. Samm: Leia õige alamleht (nt /meeskond)
+    contact_page_url = find_contact_page_url(base_url)
     
-    # Parandame tagurpidi e-posti aadressid
-    print("\nSamm 4: Parandan tagurpidi e-posti aadresse...")
+    # 2. Samm: Lae selle alamlehe sisu alla
+    print(f"\nSamm 2: Sisu allalaadimine tuvastatud lehelt...")
+    website_text = get_website_text(contact_page_url)
+    
+    if not website_text:
+        print("Ei saanud veebilehe sisu kätte. Katkestan.")
+        return None
+
+    # 3. Samm: Koosta uus prompt ja saada Geminile
+    prompt = f"""
+    Your task is to act as a data analyst. Analyze the following website text and extract
+    contact information for specific roles only.
+
+    Return the data ONLY as a JSON array. Each object in the array must be in
+    the following format:
+    {{
+      "name": "Name Here",
+      "role": "Role Title Here",
+      "email": "email address OR null",
+      "phone": "phone number OR null"
+    }}
+
+    KEY ROLES TO FIND (by priority):
+    I am interested ONLY in these roles. Please include Estonian equivalents.
+
+    1. STRATEGIC LEADERSHIP:
+       - 'CEO', 'Tegevjuht'
+
+    2. PERSONNEL / MARKETING:
+       - 'HR Manager', 'Personalijuht'
+       - 'Head of Marketing', 'Turundusjuht'
+       - 'Head of Sales', 'Müügijuht'
+    
+    3. GENERAL CONTACT:
+       - 'General Contact'
+
+    RULES:
+    1. Find the name, role, email, AND phone number.
+    2. If email or phone is not found, set the value to `null` (not "MISSING" or similar).
+    3. Ignore all other roles that are not in the list above (e.g., "Project Manager", "Specialist" are too general).
+    4. If you find a general contact (like "info@..." or a general phone number), add it as a separate object where the `role` is "General Contact".
+    5. If you do not find ANY relevant contacts, return ONLY an empty array `[]`.
+    6. Do not add anything else to your response (like "Here is the JSON:", "```json") besides the JSON itself.
+    
+    
+    TEXT CONTENT:
+    ---
+    {website_text[:30000]} 
+    ---
+    Finish analysis and return ONLY JSON.
+    """
+    
+    print("\nSamm 3: Puhastatud teksti saatmine Geminile analüüsimiseks...")
     try:
-        data = json.loads(json_response)
-        if isinstance(data, list):
-            for item in data:
-                if isinstance(item, dict) and 'email' in item and isinstance(item['email'], str):
-                    if item['email'].startswith("ee."):
-                        item['email'] = item['email'][::-1]
-        fixed_json = json.dumps(data, indent=2, ensure_ascii=False)
-    except:
-        fixed_json = json_response
+        response = model.generate_content(prompt)
+        
+        print("\n--- Vastus (Manuaalse Sisuga) ---")
+        # Puhastame vastuse, et näidata ainult JSON-i
+        json_response = response.text.strip().lstrip("```json").lstrip("```").rstrip("```")
+        
+        # Parandame tagurpidi e-posti aadressid
+        print("\nSamm 4: Parandan tagurpidi e-posti aadresse...")
+        try:
+            data = json.loads(json_response)
+            if isinstance(data, list):
+                for item in data:
+                    if isinstance(item, dict) and 'email' in item and isinstance(item['email'], str):
+                        if item['email'].startswith("ee."):
+                            item['email'] = item['email'][::-1]
+            fixed_json = json.dumps(data, indent=2, ensure_ascii=False)
+            print(fixed_json)
+            print("--------------------------------\n")
+            return data
+        except json.JSONDecodeError as e:
+            print(f"Viga JSON-i parsimisel: {e}")
+            print(f"Vastus: {json_response}")
+            return None
     
-    print(fixed_json)
-    print("--------------------------------\n")
-
-  except Exception as e:
-    print(f"Viga päringu tegemisel: {e}")
-
-
-# --- KÄIVITAMINE ---
-# Käivitame täisfunktsionaalsuse 'play.ee' baas-URL-iga
-#run_full_staff_search("https://astrobaltics.eu/")
-run_full_staff_search("https://play.ee/")
+    except Exception as e:
+        print(f"Viga päringu tegemisel: {e}")
+        return None
