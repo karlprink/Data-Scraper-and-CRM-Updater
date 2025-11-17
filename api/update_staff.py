@@ -250,23 +250,18 @@ def update_staff():
                 notion_properties = _build_notion_properties(properties_data, page_properties)
                 
                 if not notion_properties:
-                    print(f"Warning: No valid properties for staff member: {staff_member.get('name')}")
                     failed_count += 1
                     errors.append(f"No valid properties for {staff_member.get('name')}")
                     continue
 
-                print(f"Creating page for {staff_member.get('name')} ({staff_member.get('role')})")
-                print(f"Properties: {json.dumps(notion_properties, indent=2, ensure_ascii=False)}")
-
                 # Create a new page in the database
                 full_payload = {
-                    "parent": {"database_id": NOTION_DATABASE_ID},
+                    "parent": {"database_id": NOTION_DATABASE_ID_CONTACTS},
                     "properties": notion_properties
                 }
 
                 notion.create_page(full_payload)
                 created_count += 1
-                print(f"✅ Successfully created page for {staff_member.get('name')}")
 
             except requests.HTTPError as e:
                 # Extract detailed error message from Notion API
@@ -280,14 +275,12 @@ def update_staff():
                 failed_count += 1
                 staff_name = staff_member.get('name', 'Unknown')
                 errors.append(f"{staff_name}: {error_details}")
-                print(f"❌ Failed to create page for {staff_name}: {error_details}")
 
             except Exception as e:
                 failed_count += 1
                 staff_name = staff_member.get('name', 'Unknown')
                 error_msg = f"{type(e).__name__}: {str(e)}"
                 errors.append(f"{staff_name}: {error_msg}")
-                print(f"❌ Error creating page for {staff_name}: {error_msg}")
 
         # Prepare result message
         staff_found_count = len(staff_data)
@@ -359,6 +352,5 @@ def health_check():
 
 # --- Local Development Entry Point ---
 if __name__ == "__main__":
-    print("Starting Flask API on http://localhost:5002")
     app.run(debug=True, host='0.0.0.0', port=5002)
 
