@@ -39,7 +39,8 @@ BLACKLIST_HOSTS = {
     "wikipedia.org",
     "google.com",
     "maps.google.",
-    "aripaev.ee"
+    "aripaev.ee",
+    ".bdf",
 }
 
 
