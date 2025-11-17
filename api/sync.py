@@ -106,7 +106,7 @@ def google_find_website(company_name: str) -> Optional[str]:
             "key": GOOGLE_API_KEY,
             "cx": GOOGLE_CSE_CX,
             "q": f"{company_name} official website",
-            "num": 10,              # kuni 10 tulemust
+            "num": 40,              # kuni 10 tulemust
             "gl": "ee",
             "lr": "lang_et|lang_en",
         }
