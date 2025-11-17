@@ -3,6 +3,8 @@ import requests
 import json
 import logging
 from typing import Tuple, Dict, Any, Optional
+from urllib.parse import urlparse
+import re
 
 # Set up basic logging
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
@@ -11,8 +13,139 @@ logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 from .json_loader import find_company_by_regcode, clean_value
 from .notion_client import NotionClient
 
+# --------------------------------------------------------------------
+# GOOGLE CUSTOM SEARCH – kodulehe leidmine, kui Äriregistris WWW puudub
+# --------------------------------------------------------------------
+
+# ⚠️ TESTIMISEKS: asenda oma päris võtmetega.
+# Productionis vii see ENV muutujate peale.
+GOOGLE_API_KEY = "AIzaSyAzB4rD0pNGizFD9vxKnNRVqXtZ5VKzKUg"
+GOOGLE_CSE_CX = "56e45d069871c4ec6"
+
+# Must nimekiri domeenidest, mida EI taha "koduleheks"
+BLACKLIST_HOSTS = {
+    "ariregister.rik.ee",
+    "rik.ee",
+    "teatmik.ee",
+    "inforegister.ee",
+    "mtr.mkm.ee",
+    "facebook.com",
+    "fb.com",
+    "linkedin.com",
+    "instagram.com",
+    "youtube.com",
+    "twitter.com",
+    "x.com",
+    "wikipedia.org",
+    "google.com",
+    "maps.google.",
+}
+
+
+def _normalize_host(url: str) -> str:
+    """Tagastab URL-i hosti väikeste tähtedega, vea korral tühja stringi."""
+    try:
+        host = urlparse(url).hostname or ""
+        return host.lower()
+    except Exception:
+        return ""
+
+
+def _host_blacklisted(host: str) -> bool:
+    """Kontrollib, kas host kuulub musta nimekirja (registrid, kataloogid, sotsiaal jne)."""
+    return any(b in host for b in BLACKLIST_HOSTS)
+
+
+def _name_tokens(company_name: str):
+    """
+    Võtab ettevõtte nimest tokenid:
+    - väiketähtedeks
+    - jagab mitte-alfanum märgi järgi
+    - eemaldab tüüpsufiksid (OÜ, AS, UAB, jne) ja liiga lühikesed tokenid
+    """
+    tokens = re.split(r"[^a-z0-9]+", company_name.lower())
+    stop = {"ou", "oü", "as", "uab", "gmbh", "ltd", "oy", "sp", "z", "uü"}
+    return [t for t in tokens if t and t not in stop and len(t) > 2]
+
+
+def _title_contains_name(company_name: str, title: str) -> bool:
+    """
+    Kontrollib, kas mõni olulistest nime-tokenitest esineb lehe pealkirjas (title).
+    Kasutame seda, et filtreerida vaid need tulemused, mille nimes on firma nimi sees.
+    """
+    if not title:
+        return False
+    title_l = title.lower()
+    for t in _name_tokens(company_name):
+        if t in title_l:
+            return True
+    return False
+
+
+def google_find_website(company_name: str) -> Optional[str]:
+    """
+    Kasutab Google Custom Search JSON API-t, et leida ettevõtte koduleht.
+
+    Loogika:
+    - Query: "<firma nimi> official website"
+    - Võtab kuni 10 esimest tulemust.
+    - Vaatab iga tulemuse:
+        * host ei ole mustas nimekirjas (ariregister, teatmik jne)
+        * lehe title sisaldab ettevõtte nime tokenit (firma nimi sees)
+    - Tagastab esimese sobiva URL-i.
+    - Kui 10 esimese seas sobivat ei leidu, tagastab None.
+    """
+    if not company_name:
+        return None
+    if not GOOGLE_API_KEY or not GOOGLE_CSE_CX:
+        logging.info("Google API key/cx puudub – jätan veebilehe otsingu vahele.")
+        return None
+
+    try:
+        params = {
+            "key": GOOGLE_API_KEY,
+            "cx": GOOGLE_CSE_CX,
+            "q": f"{company_name} official website",
+            "num": 10,              # kuni 10 tulemust
+            "gl": "ee",
+            "lr": "lang_et|lang_en",
+        }
+        r = requests.get("https://www.googleapis.com/customsearch/v1",
+                         params=params, timeout=6)
+        r.raise_for_status()
+        data = r.json() or {}
+        items = data.get("items", []) or []
+
+        for item in items:
+            url = item.get("link")
+            title = item.get("title") or ""
+            if not url:
+                continue
+
+            host = _normalize_host(url)
+            if not host or _host_blacklisted(host):
+                # väldi registri- ja kataloogilehti, sotsmeediat jne
+                continue
+
+            if not _title_contains_name(company_name, title):
+                # kui pealkiri ei sisalda firma nime tokenit, jätame vahele
+                continue
+
+            logging.info(f"Google CSE sobiv tulemus: {title} -> {url}")
+            return url
+
+        logging.info("Google CSE 10 esimese tulemuse seas ei leitud sobivat kodulehte.")
+        return None
+
+    except Exception as e:
+        logging.warning(f"Google CSE päring ebaõnnestus: {e}")
+        return None
+
+# --------------------------------------------------------------------
 # --- EMTAK (Estonian Classification of Economic Activities) Mapping ---
 # Maps the 2-digit EMTAK code to its broader section/industry category (Tegevusvaldkond).
+# --------------------------------------------------------------------
+
 EMTAK_MAP = {
     "01": "Põllumajandus, metsamajandus ja kalapüük",
     "02": "Põllumajandus, metsamajandus ja kalapüük",
@@ -106,6 +239,7 @@ EMTAK_MAP = {
 
 # --- EMTAK Code Utilities ---
 
+
 def get_emtak_section_text(emtak_code: Optional[str]) -> Optional[str]:
     """
     Finds the broader industry section (Tegevusvaldkond) based on the first
@@ -130,6 +264,7 @@ def get_emtak_section_text(emtak_code: Optional[str]) -> Optional[str]:
     return None
 
 # --- Data Transformation Functions ---
+
 
 def _prepare_notion_properties(company: Dict[str, Any], regcode: str) -> Tuple[Dict[str, Any], list, str]:
     """
@@ -201,7 +336,7 @@ def _build_properties_from_company(company: Dict[str, Any], regcode: str, compan
     aadress_täis_val = clean_value(
         aadressid[0].get('aadress_ads__ads_normaliseeritud_taisaadress')) if aadressid and aadressid[0].get(
         'aadress_ads__ads_normaliseeritud_taisaadress') else None
-    aadress_val = aadress_täis_val # Use full address as the main address field
+    aadress_val = aadress_täis_val  # Use full address as the main address field
 
     # Extract county (Maakond)
     maakond_val_raw = None
@@ -209,7 +344,6 @@ def _build_properties_from_company(company: Dict[str, Any], regcode: str, compan
         # Assumes county is the first part of the full address string
         parts = aadress_täis_val.split(',')
         maakond_val_raw = parts[0].strip() if parts else None
-
 
     # Extract main activity (Põhitegevus)
     tegevusalad = yldandmed.get('teatatud_tegevusalad', [])
@@ -254,7 +388,6 @@ def _build_properties_from_company(company: Dict[str, Any], regcode: str, compan
     if not emtak_detailne_tekst_val: empty_fields.append("Põhitegevus")
     if not emtak_jaotis_val: empty_fields.append("Tegevusvaldkond (jaotis)")
 
-
     properties = {
         "Nimi": {"title": [{"text": {"content": company_name or ""}}]},
         # Assuming Registrikood property is set as 'Number' in Notion
@@ -278,6 +411,7 @@ def _build_properties_from_company(company: Dict[str, Any], regcode: str, compan
     return properties, empty_fields, company_name or ""
 
 # --- CLI/Interactive Mode Helper Functions ---
+
 
 def load_company_data(regcode: str, config: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -400,6 +534,7 @@ def process_company_sync(data: Dict[str, Any], config: Dict[str, Any]) -> Dict[s
 
 # --- Web/API Autofill Logic ---
 
+
 def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, Any]:
     """
     Fetches the 'Registrikood' from a given Notion page, finds the corresponding
@@ -489,6 +624,19 @@ def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, 
     company_name = clean_value(company.get('nimi'))
     properties, empty_fields, _ = _build_properties_from_company(company, regcode, company_name)
     logging.debug("Built properties payload to send to Notion.")
+
+    # 3.1 Kui Veebileht puudub, proovi leida Google CSE kaudu
+    veeb_prop = properties.get("Veebileht", {})
+    existing_url = veeb_prop.get("url")
+    if not existing_url:
+        logging.info("Veebileht puudub Äriregistri andmetes – proovime leida Google CSE abil.")
+        homepage = google_find_website(company_name)
+        if homepage:
+            properties["Veebileht"]["url"] = homepage
+            if "Veebileht" in empty_fields:
+                empty_fields.remove("Veebileht")
+        else:
+            logging.info("Google ei leidnud sobivat kodulehte (10 esimese tulemuse seas), jätame Veebileht tühjaks.")
 
     try:
         notion.update_page(page_id, properties)
