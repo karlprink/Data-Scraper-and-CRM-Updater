@@ -14,11 +14,11 @@ from .json_loader import find_company_by_regcode, clean_value
 from .notion_client import NotionClient
 
 # --------------------------------------------------------------------
-# GOOGLE CUSTOM SEARCH – KONFIG + ABI (TESTIMISEKS VÕTMED OTSE KOODIS)
+# GOOGLE CUSTOM SEARCH – kodulehe leidmine, kui Äriregistris WWW puudub
 # --------------------------------------------------------------------
 
 # ⚠️ TESTIMISEKS: asenda oma päris võtmetega.
-# Productionis liigu kindlasti ENV muutuja peale.
+# Productionis vii see ENV muutujate peale.
 GOOGLE_API_KEY = "PASTE_GOOGLE_API_KEY_HERE"
 GOOGLE_CSE_CX = "PASTE_CSE_ID_HERE"
 
@@ -41,47 +41,65 @@ BLACKLIST_HOSTS = {
     "maps.google.",
 }
 
+
 def _normalize_host(url: str) -> str:
+    """Tagastab URL-i hosti väikeste tähtedega, vea korral tühja stringi."""
     try:
         host = urlparse(url).hostname or ""
         return host.lower()
     except Exception:
         return ""
 
+
 def _host_blacklisted(host: str) -> bool:
+    """Kontrollib, kas host kuulub musta nimekirja (registrid, kataloogid, sotsiaal jne)."""
     return any(b in host for b in BLACKLIST_HOSTS)
 
+
 def _name_tokens(company_name: str):
+    """
+    Võtab ettevõtte nimest tokenid:
+    - väiketähtedeks
+    - jagab mitte-alfanum märgi järgi
+    - eemaldab tüüpsufiksid (OÜ, AS, UAB, jne) ja liiga lühikesed tokenid
+    """
     tokens = re.split(r"[^a-z0-9]+", company_name.lower())
     stop = {"ou", "oü", "as", "uab", "gmbh", "ltd", "oy", "sp", "z", "uü"}
     return [t for t in tokens if t and t not in stop and len(t) > 2]
 
-def _name_matches_host(company_name: str, host: str) -> bool:
-    tokens = _name_tokens(company_name)
-    return any(t in host for t in tokens)
 
-def _pick_homepage(candidates, company_name: str) -> Optional[str]:
+def _score_candidate(host: str, company_name: str) -> int:
     """
-    Valib esimese mõistliku URL-i:
-    - väldib musta nimekirja domeene
-    - eelistab .ee domeeni või nimega sobivat hosti
+    Lihtne skoor:
+    - +3 kui host lõppeb .ee
+    - +2 kui mõni nime-token esineb hostis
+    - muidu 0
+    Kõrgem skoor = parem kandidaat.
     """
-    primary = None
-    for url in candidates:
-        host = _normalize_host(url)
-        if not host or _host_blacklisted(host):
-            continue
-        if host.endswith(".ee") or _name_matches_host(company_name, host):
-            return url
-        if not primary:
-            primary = url
-    return primary
+    score = 0
+    if host.endswith(".ee"):
+        score += 3
+    tokens = _name_tokens(company_name)
+    if any(t in host for t in tokens):
+        score += 2
+    return score
+
 
 def google_find_website(company_name: str) -> Optional[str]:
     """
     Kasutab Google Custom Search JSON API-t, et leida ettevõtte koduleht.
+
+    Loogika:
     - Query: "<firma nimi> official website"
-    - Võtab kuni 5 tulemust ja valib _pick_homepage abil sobiva.
+    - Võtab kuni 10 esimest tulemust.
+    - Filtreerib välja:
+        * mustas nimekirjas oleva hostiga URL-id (registrid, kataloogid, sotsiaal jne)
+    - Ülejäänute seast:
+        * arvutab skoori (_score_candidate):
+            - eelistab .ee domeene
+            - eelistab hoste, kus esineb firma nime token
+        * valib suurima skooriga kandidaadi (esimese, kui viik)
+    - Kui sobivat kandidaati ei leidu, tagastab None.
     """
     if not company_name:
         return None
@@ -94,7 +112,7 @@ def google_find_website(company_name: str) -> Optional[str]:
             "key": GOOGLE_API_KEY,
             "cx": GOOGLE_CSE_CX,
             "q": f"{company_name} official website",
-            "num": 5,
+            "num": 10,              # kuni 10 tulemust
             "gl": "ee",
             "lr": "lang_et|lang_en",
         }
@@ -103,19 +121,34 @@ def google_find_website(company_name: str) -> Optional[str]:
         r.raise_for_status()
         data = r.json() or {}
         items = data.get("items", []) or []
-        candidates = [it.get("link") for it in items if it.get("link")]
+
+        candidates = []
+        for item in items:
+            url = item.get("link")
+            if not url:
+                continue
+            host = _normalize_host(url)
+            if not host or _host_blacklisted(host):
+                # väldi registri- ja kataloogilehti, sotsmeediat jne
+                continue
+
+            score = _score_candidate(host, company_name)
+            candidates.append((score, url, host))
+
         if not candidates:
-            logging.info("Google CSE ei tagastanud ühtegi kandidaati.")
+            logging.info("Google CSE 10 esimese tulemuse seas ei leitud ühtegi sobivat kodulehe kandidaati.")
             return None
-        picked = _pick_homepage(candidates, company_name)
-        if picked:
-            logging.info(f"Google CSE leidis kodulehe: {picked}")
-        else:
-            logging.info("Google CSE ei leidnud sobivat kodulehte (kõik kandidaadid olid mustas nimekirjas vms).")
-        return picked
+
+        # Sorteerime skoori järgi (kõrgeim enne); sama skoori korral jääb varasem enne.
+        candidates.sort(key=lambda t: t[0], reverse=True)
+        best_score, best_url, best_host = candidates[0]
+        logging.info(f"Google CSE valis sobiva kodulehe (score={best_score}): {best_host} -> {best_url}")
+        return best_url
+
     except Exception as e:
         logging.warning(f"Google CSE päring ebaõnnestus: {e}")
         return None
+
 
 # --------------------------------------------------------------------
 # --- EMTAK (Estonian Classification of Economic Activities) Mapping ---
@@ -170,7 +203,7 @@ EMTAK_MAP = {
     "50": "Veondus ja laondus",
     "51": "Veondus ja laondus",
     "52": "Veondus ja laondus",
-    "53": "Veondus ja laondus",
+    "53": "Veondus ja laондus",
     "55": "Majutus ja toitlustus",
     "56": "Majutus ja toitlustus",
     "58": "Info ja side",
@@ -601,7 +634,7 @@ def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, 
     properties, empty_fields, _ = _build_properties_from_company(company, regcode, company_name)
     logging.debug("Built properties payload to send to Notion.")
 
-    # 3.1 Kui Veebileht puudub, proovi leida Google CSE kaudu
+    # 3.1 Kui Veebileht puudub, proovi leida Google CSE kaudu (kuni 10 esimest, skooriga)
     veeb_prop = properties.get("Veebileht", {})
     existing_url = veeb_prop.get("url")
     if not existing_url:
