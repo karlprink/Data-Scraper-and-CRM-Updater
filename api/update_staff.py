@@ -83,7 +83,6 @@ def _build_notion_properties(properties_data: Dict[str, Any], page_properties: D
         prop_type = None
         if page_properties and prop_name in page_properties:
             prop_type = page_properties[prop_name].get("type")
-            print(f"Property '{prop_name}' has type: {prop_type}")
         
         # Handle "Name" - this is the role (CEO, HR Manager, etc.) - should be title field
         if prop_name == "Name":
@@ -140,12 +139,12 @@ def update_staff():
     """
     The main endpoint for updating staff/contact persons on a Notion page.
 
-    It loads configuration, extracts page ID and website URL, runs Gemini to get staff information
-    from the company website, updates the Notion page properties, and renders an HTML feedback page.
+    It loads configuration, extracts company page ID and website URL, runs Gemini to get staff information
+    from the company website, creates staff member pages, and links them to the company via relation.
 
     Expected request format:
     - websiteUrl: The company website URL to search for staff information (required)
-    - pageId: Optional Notion page ID (used only to get property types for reference)
+    - pageId: The company's Notion page ID - used to create the relation between staff members and the company (optional)
     - notionUrl: Optional redirect URL back to Notion page
     """
     page_id = None
@@ -158,13 +157,9 @@ def update_staff():
     # Configuration validation (essential for the API to run)
     NOTION_API_KEY = os.getenv("NOTION_API_KEY_UPDATE_STAFF")
     NOTION_DATABASE_ID = os.getenv("NOTION_DATABASE_ID_UPDATE_STAFF")
-    print("================================================")
-    print(NOTION_API_KEY, NOTION_DATABASE_ID)
-    print("================================================")
 
     if not all([NOTION_API_KEY, NOTION_DATABASE_ID]):
         error_msg = "Critical API Error: Missing configuration (NOTION_API_KEY, NOTION_DATABASE_ID). Check Vercel/Environment settings."
-        print(error_msg)
         return render_template_string(
             HTML_TEMPLATE,
             status="Viga",
@@ -198,8 +193,6 @@ def update_staff():
         if not website_url.startswith(('http://', 'https://')):
             website_url = 'https://' + website_url
 
-        print(f"Searching for staff information on: {website_url}")
-
         # Use Gemini to find staff information
         staff_data = run_full_staff_search(website_url)
 
@@ -226,29 +219,13 @@ def update_staff():
         # Initialize Notion client
         notion = NotionClient(NOTION_API_KEY, NOTION_DATABASE_ID)
 
-        # Get property types from database schema or from a page if pageId is provided
+        # Get property types from database schema
         page_properties = None
         try:
-            if page_id:
-                # Try to get properties from a specific page
-                try:
-                    page_data = notion.get_page(page_id)
-                    page_properties = page_data.get("properties", {})
-                    available_properties = list(page_properties.keys())
-                    print(f"Available properties on page: {available_properties}")
-                except Exception as e:
-                    print(f"Warning: Could not fetch page to check properties: {e}")
-            else:
-                # Get properties from database schema directly
-                try:
-                    database_data = notion.get_database()
-                    page_properties = database_data.get("properties", {})
-                    available_properties = list(page_properties.keys())
-                    print(f"Available properties in database: {available_properties}")
-                except Exception as e:
-                    print(f"Warning: Could not fetch database schema: {e}")
+            database_data = notion.get_database()
+            page_properties = database_data.get("properties", {})
         except Exception as e:
-            print(f"Warning: Could not get property types: {e}")
+            pass
 
         # Create a page for each staff member found
         created_count = 0
@@ -264,22 +241,18 @@ def update_staff():
                     "Email": staff_member.get('email') if staff_member.get('email') else None,
                     "Telefoninumber": staff_member.get('phone') if staff_member.get('phone') else None,
                 }
-
-                # Add company relation if page_id is available (assuming it's the company page)
-                # This might need adjustment based on your Notion structure
-                # properties_data["Ettevõte"] = [page_id]
+ 
+                # Add company relation if page_id is available (company page ID from request)
+                if page_id:
+                    properties_data["Ettevõte"] = [page_id]
 
                 # Convert properties to Notion API format (pass page_properties to check types)
                 notion_properties = _build_notion_properties(properties_data, page_properties)
                 
                 if not notion_properties:
-                    print(f"Warning: No valid properties for staff member: {staff_member.get('name')}")
                     failed_count += 1
                     errors.append(f"No valid properties for {staff_member.get('name')}")
                     continue
-
-                print(f"Creating page for {staff_member.get('name')} ({staff_member.get('role')})")
-                print(f"Properties: {json.dumps(notion_properties, indent=2, ensure_ascii=False)}")
 
                 # Create a new page in the database
                 full_payload = {
@@ -289,7 +262,6 @@ def update_staff():
 
                 notion.create_page(full_payload)
                 created_count += 1
-                print(f"✅ Successfully created page for {staff_member.get('name')}")
 
             except requests.HTTPError as e:
                 # Extract detailed error message from Notion API
@@ -303,14 +275,12 @@ def update_staff():
                 failed_count += 1
                 staff_name = staff_member.get('name', 'Unknown')
                 errors.append(f"{staff_name}: {error_details}")
-                print(f"❌ Failed to create page for {staff_name}: {error_details}")
 
             except Exception as e:
                 failed_count += 1
                 staff_name = staff_member.get('name', 'Unknown')
                 error_msg = f"{type(e).__name__}: {str(e)}"
                 errors.append(f"{staff_name}: {error_msg}")
-                print(f"❌ Error creating page for {staff_name}: {error_msg}")
 
         # Prepare result message
         staff_found_count = len(staff_data)
@@ -382,6 +352,5 @@ def health_check():
 
 # --- Local Development Entry Point ---
 if __name__ == "__main__":
-    print("Starting Flask API on http://localhost:5002")
     app.run(debug=True, host='0.0.0.0', port=5002)
 
