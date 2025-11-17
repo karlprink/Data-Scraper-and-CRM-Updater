@@ -14,13 +14,13 @@ from .json_loader import find_company_by_regcode, clean_value
 from .notion_client import NotionClient
 
 # --------------------------------------------------------------------
-# GOOGLE CUSTOM SEARCH – kodulehe leidmine, kui Äriregistris WWW puudub
+# GOOGLE CUSTOM SEARCH – KONFIG + ABI (TESTIMISEKS VÕTMED OTSE KOODIS)
 # --------------------------------------------------------------------
 
 # ⚠️ TESTIMISEKS: asenda oma päris võtmetega.
-# Productionis vii see ENV muutujate peale.
-GOOGLE_API_KEY = "AIzaSyAzB4rD0pNGizFD9vxKnNRVqXtZ5VKzKUg"
-GOOGLE_CSE_CX = "56e45d069871c4ec6"
+# Productionis liigu kindlasti ENV muutuja peale.
+GOOGLE_API_KEY = "PASTE_GOOGLE_API_KEY_HERE"
+GOOGLE_CSE_CX = "PASTE_CSE_ID_HERE"
 
 # Must nimekiri domeenidest, mida EI taha "koduleheks"
 BLACKLIST_HOSTS = {
@@ -41,59 +41,47 @@ BLACKLIST_HOSTS = {
     "maps.google.",
 }
 
-
 def _normalize_host(url: str) -> str:
-    """Tagastab URL-i hosti väikeste tähtedega, vea korral tühja stringi."""
     try:
         host = urlparse(url).hostname or ""
         return host.lower()
     except Exception:
         return ""
 
-
 def _host_blacklisted(host: str) -> bool:
-    """Kontrollib, kas host kuulub musta nimekirja (registrid, kataloogid, sotsiaal jne)."""
     return any(b in host for b in BLACKLIST_HOSTS)
 
-
 def _name_tokens(company_name: str):
-    """
-    Võtab ettevõtte nimest tokenid:
-    - väiketähtedeks
-    - jagab mitte-alfanum märgi järgi
-    - eemaldab tüüpsufiksid (OÜ, AS, UAB, jne) ja liiga lühikesed tokenid
-    """
     tokens = re.split(r"[^a-z0-9]+", company_name.lower())
     stop = {"ou", "oü", "as", "uab", "gmbh", "ltd", "oy", "sp", "z", "uü"}
     return [t for t in tokens if t and t not in stop and len(t) > 2]
 
+def _name_matches_host(company_name: str, host: str) -> bool:
+    tokens = _name_tokens(company_name)
+    return any(t in host for t in tokens)
 
-def _title_contains_name(company_name: str, title: str) -> bool:
+def _pick_homepage(candidates, company_name: str) -> Optional[str]:
     """
-    Kontrollib, kas mõni olulistest nime-tokenitest esineb lehe pealkirjas (title).
-    Kasutame seda, et filtreerida vaid need tulemused, mille nimes on firma nimi sees.
+    Valib esimese mõistliku URL-i:
+    - väldib musta nimekirja domeene
+    - eelistab .ee domeeni või nimega sobivat hosti
     """
-    if not title:
-        return False
-    title_l = title.lower()
-    for t in _name_tokens(company_name):
-        if t in title_l:
-            return True
-    return False
-
+    primary = None
+    for url in candidates:
+        host = _normalize_host(url)
+        if not host or _host_blacklisted(host):
+            continue
+        if host.endswith(".ee") or _name_matches_host(company_name, host):
+            return url
+        if not primary:
+            primary = url
+    return primary
 
 def google_find_website(company_name: str) -> Optional[str]:
     """
     Kasutab Google Custom Search JSON API-t, et leida ettevõtte koduleht.
-
-    Loogika:
     - Query: "<firma nimi> official website"
-    - Võtab kuni 10 esimest tulemust.
-    - Vaatab iga tulemuse:
-        * host ei ole mustas nimekirjas (ariregister, teatmik jne)
-        * lehe title sisaldab ettevõtte nime tokenit (firma nimi sees)
-    - Tagastab esimese sobiva URL-i.
-    - Kui 10 esimese seas sobivat ei leidu, tagastab None.
+    - Võtab kuni 5 tulemust ja valib _pick_homepage abil sobiva.
     """
     if not company_name:
         return None
@@ -106,7 +94,7 @@ def google_find_website(company_name: str) -> Optional[str]:
             "key": GOOGLE_API_KEY,
             "cx": GOOGLE_CSE_CX,
             "q": f"{company_name} official website",
-            "num": 40,              # kuni 10 tulemust
+            "num": 5,
             "gl": "ee",
             "lr": "lang_et|lang_en",
         }
@@ -115,28 +103,16 @@ def google_find_website(company_name: str) -> Optional[str]:
         r.raise_for_status()
         data = r.json() or {}
         items = data.get("items", []) or []
-
-        for item in items:
-            url = item.get("link")
-            title = item.get("title") or ""
-            if not url:
-                continue
-
-            host = _normalize_host(url)
-            if not host or _host_blacklisted(host):
-                # väldi registri- ja kataloogilehti, sotsmeediat jne
-                continue
-
-            if not _title_contains_name(company_name, title):
-                # kui pealkiri ei sisalda firma nime tokenit, jätame vahele
-                continue
-
-            logging.info(f"Google CSE sobiv tulemus: {title} -> {url}")
-            return url
-
-        logging.info("Google CSE 10 esimese tulemuse seas ei leitud sobivat kodulehte.")
-        return None
-
+        candidates = [it.get("link") for it in items if it.get("link")]
+        if not candidates:
+            logging.info("Google CSE ei tagastanud ühtegi kandidaati.")
+            return None
+        picked = _pick_homepage(candidates, company_name)
+        if picked:
+            logging.info(f"Google CSE leidis kodulehe: {picked}")
+        else:
+            logging.info("Google CSE ei leidnud sobivat kodulehte (kõik kandidaadid olid mustas nimekirjas vms).")
+        return picked
     except Exception as e:
         logging.warning(f"Google CSE päring ebaõnnestus: {e}")
         return None
