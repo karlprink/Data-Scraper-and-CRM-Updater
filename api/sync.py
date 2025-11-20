@@ -6,7 +6,7 @@ from typing import Tuple, Dict, Any, Optional
 from urllib.parse import urlparse
 import re
 
-from test.test_sync import load_config
+from .config import load_config
 
 # Set up basic logging
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
