@@ -7,12 +7,28 @@
         "maxLambdaSize": "30mb",
         "runtime": "python3.11"
       }
+    },
+    {
+      "src": "api/update_staff.py",
+      "use": "@vercel/python",
+      "config": {
+        "maxLambdaSize": "30mb",
+        "runtime": "python3.11"
+      }
     }
   ],
   "routes": [
     {
       "src": "/api/autofill",
       "dest": "api/autofill.py"
+    },
+    {
+      "src": "/api/update-staff",
+      "dest": "api/update_staff.py"
+    },
+    {
+      "src": "/api/update-staff/health",
+      "dest": "api/update_staff.py"
     },
     {
       "src": "/",
