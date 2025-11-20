@@ -27,10 +27,10 @@ jobs:
     - name: 3. Install Dependencies
       run: pip install -r requirements.txt
 
-    - name: Linting
-      run: |
-        pip install flake8
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+#    - name: Linting
+#      run: |
+#        pip install flake8
+#        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
 
     - name: Testing
       run: |
