@@ -23,6 +23,59 @@ def get_database_properties(notion: NotionClient) -> Optional[Dict[str, Any]]:
         return None
 
 
+def find_existing_staff_pages(
+    notion: NotionClient,
+    role: str,
+    company_page_id: Optional[str]
+) -> List[Dict[str, Any]]:
+    """
+    Finds existing staff pages with the same role and company.
+    
+    Args:
+        notion: The NotionClient instance
+        role: The role to search for (e.g., "CEO", "HR Manager")
+        company_page_id: Optional company page ID to filter by
+        
+    Returns:
+        List of existing page objects
+    """
+    try:
+        # Build filter conditions
+        filters = []
+        
+        # Filter by role (Name field is a title)
+        filters.append({
+            "property": "Name",
+            "title": {"equals": role}
+        })
+        
+        # Filter by company if provided
+        if company_page_id:
+            filters.append({
+                "property": "Ettevõte",
+                "relation": {"contains": company_page_id}
+            })
+        
+        # Combine filters with AND
+        if len(filters) == 1:
+            filter_dict = filters[0]
+        else:
+            filter_dict = {
+                "and": filters
+            }
+        
+        # Query the database
+        existing_pages = notion.query_database(filter_dict)
+        
+        # Filter out archived pages
+        active_pages = [page for page in existing_pages if not page.get("archived", False)]
+        
+        return active_pages
+    except Exception:
+        # If query fails, return empty list (safer to create new than fail)
+        return []
+
+
 def map_staff_to_properties(staff_member: Dict[str, Any], page_id: Optional[str]) -> Dict[str, Any]:
     """
     Maps Gemini staff data to Notion property format.
@@ -133,9 +186,10 @@ def create_staff_page(
     page_id: Optional[str],
     database_id: str,
     page_properties: Optional[Dict[str, Any]]
-) -> Tuple[bool, Optional[str]]:
+) -> Tuple[bool, Optional[str], bool]:
     """
     Creates a single staff member page in Notion.
+    If a page with the same role and company already exists, it will be deleted first.
     
     Args:
         notion: The NotionClient instance
@@ -145,9 +199,33 @@ def create_staff_page(
         page_properties: Optional database property types
         
     Returns:
-        Tuple of (success, error_message)
+        Tuple of (success, error_message, was_replaced)
+        - success: True if page was created successfully
+        - error_message: Error message if creation failed, None otherwise
+        - was_replaced: True if an existing page was deleted before creating, False if it's a new page
     """
+    was_replaced = False
+    
     try:
+        # Get the role from staff member data
+        role = staff_member.get('role')
+        
+        # Check for existing pages with the same role and company
+        # Only do deduplication if we have both role and company page_id
+        if role and page_id:
+            existing_pages = find_existing_staff_pages(notion, role, page_id)
+            
+            # Delete existing pages to prevent duplicates
+            for existing_page in existing_pages:
+                try:
+                    page_id_to_delete = existing_page.get('id')
+                    if page_id_to_delete:
+                        notion.delete_page(page_id_to_delete)
+                        was_replaced = True
+                except Exception as e:
+                    # Log error but continue - we'll still try to create the new page
+                    pass
+        
         # Map Gemini staff data to Notion properties
         properties_data = map_staff_to_properties(staff_member, page_id)
         
@@ -155,7 +233,7 @@ def create_staff_page(
         notion_properties = build_notion_properties(properties_data, page_properties)
         
         if not notion_properties:
-            return False, f"No valid properties for {staff_member.get('name')}"
+            return False, f"No valid properties for {staff_member.get('name')}", was_replaced
         
         # Create a new page in the database
         full_payload = {
@@ -164,7 +242,7 @@ def create_staff_page(
         }
         
         notion.create_page(full_payload)
-        return True, None
+        return True, None, was_replaced
         
     except requests.HTTPError as e:
         # Extract detailed error message from Notion API
@@ -176,12 +254,12 @@ def create_staff_page(
             error_details = e.response.text if hasattr(e, 'response') else str(e)
         
         staff_name = staff_member.get('name', 'Unknown')
-        return False, f"{staff_name}: {error_details}"
+        return False, f"{staff_name}: {error_details}", was_replaced
         
     except Exception as e:
         staff_name = staff_member.get('name', 'Unknown')
         error_msg = f"{type(e).__name__}: {str(e)}"
-        return False, f"{staff_name}: {error_msg}"
+        return False, f"{staff_name}: {error_msg}", was_replaced
 
 
 def create_staff_pages(
@@ -190,9 +268,10 @@ def create_staff_pages(
     page_id: Optional[str],
     database_id: str,
     page_properties: Optional[Dict[str, Any]]
-) -> Tuple[int, int, List[str]]:
+) -> Tuple[int, int, int, List[str]]:
     """
     Creates pages for all staff members.
+    If pages with the same role and company already exist, they will be replaced.
     
     Args:
         notion: The NotionClient instance
@@ -202,23 +281,30 @@ def create_staff_pages(
         page_properties: Optional database property types
         
     Returns:
-        Tuple of (created_count, failed_count, errors)
+        Tuple of (created_count, replaced_count, failed_count, errors)
+        - created_count: Number of successfully created pages
+        - replaced_count: Number of pages that replaced existing ones
+        - failed_count: Number of failed creations
+        - errors: List of error messages
     """
     created_count = 0
+    replaced_count = 0
     failed_count = 0
     errors = []
     
     for staff_member in staff_data:
-        success, error_msg = create_staff_page(
+        success, error_msg, was_replaced = create_staff_page(
             notion, staff_member, page_id, database_id, page_properties
         )
         
         if success:
             created_count += 1
+            if was_replaced:
+                replaced_count += 1
         else:
             failed_count += 1
             if error_msg:
                 errors.append(error_msg)
     
-    return created_count, failed_count, errors
+    return created_count, replaced_count, failed_count, errors
 

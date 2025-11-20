@@ -48,6 +48,7 @@ HTML_TEMPLATE = """
 
 def prepare_result_message(
     created_count: int,
+    replaced_count: int,
     failed_count: int,
     staff_found_count: int,
     errors: List[str]
@@ -57,6 +58,7 @@ def prepare_result_message(
     
     Args:
         created_count: Number of successfully created pages
+        replaced_count: Number of pages that replaced existing ones
         failed_count: Number of failed page creations
         staff_found_count: Total number of staff members found
         errors: List of error messages
@@ -75,14 +77,22 @@ def prepare_result_message(
         # Partial success
         status_text = "Osaline edu"
         status_class = "warning"
-        result_message = f"⚠️ Loodud {created_count} kontaktisiku lehte {staff_found_count} leitud kontaktisikust. {failed_count} ebaõnnestus."
+        new_count = created_count - replaced_count
+        if replaced_count > 0:
+            result_message = f"⚠️ Loodud {created_count} kontaktisiku lehte {staff_found_count} leitud kontaktisikust ({new_count} uut, {replaced_count} uuendatud). {failed_count} ebaõnnestus."
+        else:
+            result_message = f"⚠️ Loodud {created_count} kontaktisiku lehte {staff_found_count} leitud kontaktisikust. {failed_count} ebaõnnestus."
         if errors:
             result_message += f" Vead: {'; '.join(errors[:3])}"  # Show first 3 errors
     else:
         # All succeeded
         status_text = "Edukas"
         status_class = "success"
-        result_message = f"✅ Edukalt loodud {created_count} kontaktisiku lehte veebilehelt leitud kontaktisikute põhjal."
+        new_count = created_count - replaced_count
+        if replaced_count > 0:
+            result_message = f"✅ Edukalt loodud {created_count} kontaktisiku lehte veebilehelt leitud kontaktisikute põhjal ({new_count} uut, {replaced_count} uuendatud)."
+        else:
+            result_message = f"✅ Edukalt loodud {created_count} kontaktisiku lehte veebilehelt leitud kontaktisikute põhjal."
     
     # Prepare debug info if there are many errors
     debug_info = None
@@ -90,6 +100,7 @@ def prepare_result_message(
         debug_info = {
             "total_staff_found": staff_found_count,
             "created": created_count,
+            "replaced": replaced_count,
             "failed": failed_count,
             "all_errors": errors
         }
