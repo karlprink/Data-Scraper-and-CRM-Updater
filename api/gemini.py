@@ -10,7 +10,7 @@ import json
 load_dotenv()
 
 # Konfigureerin kliendi
-genai.configure(api_key="AIzaSyBX13A1LO7gwcnQQl3WAkrFLp18YsucGUA")
+genai.configure(api_key=OS.getenv("GOOGLE_API_KEY"))
 
 
 try:
