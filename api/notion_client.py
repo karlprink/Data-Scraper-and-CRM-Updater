@@ -34,6 +34,13 @@ class NotionClient:
         r.raise_for_status()
         return r.json()
 
+    def get_database(self):
+        """Retrieves database schema/properties."""
+        url = f"https://api.notion.com/v1/databases/{self.database_id}"
+        r = requests.get(url, headers=self.headers)
+        r.raise_for_status()
+        return r.json()
+
     def query_by_regcode(self, regcode: str):
         """Searches for a page by registry code."""
         url = f"https://api.notion.com/v1/databases/{self.database_id}/query"
@@ -51,3 +58,20 @@ class NotionClient:
         if res.get("results"):
             return res["results"][0]
         return None
+
+    def query_database(self, filter_dict: dict):
+        """Queries the database with a custom filter."""
+        url = f"https://api.notion.com/v1/databases/{self.database_id}/query"
+        payload = {"filter": filter_dict}
+        r = requests.post(url, headers=self.headers, json=payload)
+        r.raise_for_status()
+        res = r.json()
+        return res.get("results", [])
+
+    def delete_page(self, page_id: str):
+        """Archives (soft deletes) a page in Notion."""
+        url = f"https://api.notion.com/v1/pages/{page_id}"
+        payload = {"archived": True}
+        r = requests.patch(url, headers=self.headers, json=payload)
+        r.raise_for_status()
+        return r.json()
