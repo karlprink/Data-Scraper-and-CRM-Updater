@@ -1,13 +1,16 @@
-import pandas as pd
+import io
 import math
 import os
 import time
-import requests
-import io
 from datetime import timedelta
+
+import pandas as pd
+
+from api.clients.ariregister_client import AriregisterClient
 
 CACHE_FILE_PATH = "/tmp/ariregister_data.csv"
 CACHE_EXPIRATION = timedelta(hours=24)
+ariregister_client = AriregisterClient()
 
 
 def load_csv(url: str) -> pd.DataFrame:
@@ -35,10 +38,8 @@ def load_csv(url: str) -> pd.DataFrame:
         url = url.replace(char, '')
     
     print(f"Loading CSV from: {url}")
-    
-    # Download with custom headers first
-    response = requests.get(url, headers=headers)
-    response.raise_for_status()
+
+    response = ariregister_client.get_csv(url, headers)
     
     # Try pandas built-in compression support for ZIP files
     if url.endswith('.zip'):

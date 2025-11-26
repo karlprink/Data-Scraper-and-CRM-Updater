@@ -1,11 +1,10 @@
-from flask import Flask, request, render_template_string, Response
+from flask import Flask, request, Response
 import traceback
-import json
 from typing import Dict, Any
 
 # Assuming these are relative imports in the project structure
 from .sync import autofill_page_by_page_id
-from .notion_client import NotionClient
+from api.clients.notion_client import NotionClient
 from .config import load_config
 
 # --- Flask App Initialization ---

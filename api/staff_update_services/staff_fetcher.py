@@ -2,7 +2,7 @@
 Staff data fetching from websites using Gemini.
 """
 from typing import Dict, Any, List, Tuple, Optional
-from gemini import run_full_staff_search
+from api.gemini import run_full_staff_search
 
 
 def fetch_staff_data(website_url: str) -> Tuple[Optional[List[Dict[str, Any]]], Optional[str]]:

@@ -1,12 +1,14 @@
+import json
+import math
 import os
 import time
-import json
 import zipfile
-import requests
-import ijson
-import math
 from datetime import timedelta
 from typing import Optional, Dict, Any
+
+import ijson
+
+from api.clients.ariregister_client import AriregisterClient
 
 # --- Configuration ---
 CACHE_DIR = "/tmp/cache"
@@ -86,7 +88,8 @@ def load_json(url: str, target_code: str) -> Optional[Dict[str, Any]]:
         headers = {"User-Agent": "Mozilla/5.0"}
 
         # Prevents loading the whole file into memory
-        with requests.get(url.strip(), headers=headers, stream=True) as r:
+        ariregister_client = AriregisterClient()
+        with ariregister_client.get_csv(url.strip(), headers=headers, stream=True) as r:
             r.raise_for_status()
             os.makedirs(os.path.dirname(CACHE_FILE_PATH), exist_ok=True)
             with open(CACHE_FILE_PATH, "wb") as f:

@@ -6,11 +6,13 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse # Vajalik linkide parandamiseks
 import json
 
+from api.clients.company_website_client import CompanyWebsiteClient
+
 # Lae .env faili muutujad
 load_dotenv()
 
 # Konfigureerin kliendi
-genai.configure(api_key=OS.getenv("GOOGLE_API_KEY"))
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 
 try:
@@ -19,6 +21,8 @@ except Exception as e:
     print(f"Viga mudeli initsialiseerimisel: {e}")
     exit()
 
+company_website_client = CompanyWebsiteClient()
+
 def get_website_text(url):
     """Laeb veebilehe sisu alla ja puhastab selle tekstiks."""
     print(f"   ... Laen alla sisu aadressilt: {url}")
@@ -26,8 +30,7 @@ def get_website_text(url):
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
         }
-        response = requests.get(url, headers=headers, timeout=10)
-        response.raise_for_status()
+        response = company_website_client.get_company_website(url, headers)
         
         soup = BeautifulSoup(response.text, 'html.parser')
         
@@ -57,8 +60,7 @@ def find_contact_page_url(base_url):
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
         }
-        response = requests.get(base_url, headers=headers, timeout=10)
-        response.raise_for_status()
+        response = company_website_client.get_company_website(base_url, headers)
         
         soup = BeautifulSoup(response.text, 'html.parser')
         

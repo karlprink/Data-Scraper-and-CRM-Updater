@@ -1,19 +1,19 @@
-import os
-import requests
-import json
 import logging
+import re
 from typing import Tuple, Dict, Any, Optional
 from urllib.parse import urlparse
-import re
+
+import requests
 
 from .config import load_config
+from api.clients.google_client import GoogleClient
 
 # Set up basic logging
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
 # Assuming these are relative imports in the project structure
 from .json_loader import find_company_by_regcode, clean_value
-from .notion_client import NotionClient
+from api.clients.notion_client import NotionClient
 
 # --------------------------------------------------------------------
 # GOOGLE CUSTOM SEARCH – kodulehe leidmine, kui Äriregistris WWW puudub
@@ -111,19 +111,9 @@ def google_find_website(company_name: str) -> Optional[str]:
         return None
 
     try:
-        params = {
-            "key": GOOGLE_API_KEY,
-            "cx": GOOGLE_CSE_CX,
-            "q": f"{company_name} official website",
-            "num": 10,              # kuni 10 tulemust
-            "gl": "ee",
-            "lr": "lang_et|lang_en",
-        }
-        r = requests.get("https://www.googleapis.com/customsearch/v1",
-                         params=params, timeout=6)
-        r.raise_for_status()
-        data = r.json() or {}
-        items = data.get("items", []) or []
+        google_client = GoogleClient(GOOGLE_API_KEY, GOOGLE_CSE_CX)
+        results = google_client.get_search_results(f"{company_name} official website")
+        items = results.get("items", []) or []
 
         candidates = []
         for item in items:
