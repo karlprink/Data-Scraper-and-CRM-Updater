@@ -6,14 +6,14 @@ from urllib.parse import urlparse
 import requests
 
 from .config import load_config
-from api.clients.google_client import GoogleClient
+from .clients.google_client import GoogleClient
 
 # Set up basic logging
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
 # Assuming these are relative imports in the project structure
 from .json_loader import find_company_by_regcode, clean_value
-from api.clients.notion_client import NotionClient
+from .clients.notion_client import NotionClient
 
 # --------------------------------------------------------------------
 # GOOGLE CUSTOM SEARCH – kodulehe leidmine, kui Äriregistris WWW puudub

@@ -6,7 +6,7 @@ from datetime import timedelta
 
 import pandas as pd
 
-from api.clients.ariregister_client import AriregisterClient
+from .clients.ariregister_client import AriregisterClient
 
 CACHE_FILE_PATH = "/tmp/ariregister_data.csv"
 CACHE_EXPIRATION = timedelta(hours=24)

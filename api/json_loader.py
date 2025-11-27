@@ -8,7 +8,7 @@ from typing import Optional, Dict, Any
 
 import ijson
 
-from api.clients.ariregister_client import AriregisterClient
+from .clients.ariregister_client import AriregisterClient
 
 # --- Configuration ---
 CACHE_DIR = "/tmp/cache"

@@ -4,7 +4,7 @@ from typing import Dict, Any
 
 # Assuming these are relative imports in the project structure
 from .sync import autofill_page_by_page_id
-from api.clients.notion_client import NotionClient
+from .clients.notion_client import NotionClient
 from .config import load_config
 
 # --- Flask App Initialization ---

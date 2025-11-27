@@ -6,7 +6,7 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse # Vajalik linkide parandamiseks
 import json
 
-from api.clients.company_website_client import CompanyWebsiteClient
+from .clients.company_website_client import CompanyWebsiteClient
 
 # Lae .env faili muutujad
 load_dotenv()

@@ -3,7 +3,7 @@ Notion API operations for staff/contact person management.
 """
 import requests
 from typing import Dict, Any, List, Tuple, Optional
-from api.clients.notion_client import NotionClient
+from ..clients.notion_client import NotionClient
 
 
 def get_database_properties(notion: NotionClient) -> Optional[Dict[str, Any]]:
