@@ -5,7 +5,7 @@ from flask import Flask
 import traceback
 import json
 from .config import load_config
-from notion_client import NotionClient
+from .notion_client import NotionClient
 
 # Import service modules from staff_update_services package
 from staff_update_services import (
