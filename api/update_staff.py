@@ -4,7 +4,7 @@ Main Flask endpoint for updating staff/contact persons in Notion.
 from flask import Flask
 import traceback
 import json
-from config import load_config
+from .config import load_config
 from notion_client import NotionClient
 
 # Import service modules from staff_update_services package
