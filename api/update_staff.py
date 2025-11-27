@@ -7,8 +7,7 @@ import json
 from .config import load_config
 from .clients.notion_client import NotionClient
 
-# Import service modules from staff_update_services package
-from staff_update_services import (
+from .staff_update_services import (
     validate_config,
     extract_request_params,
     normalize_website_url,
