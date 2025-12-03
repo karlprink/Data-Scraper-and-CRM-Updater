@@ -20,8 +20,7 @@ To improve the setup experience, the project should offer containerized deployme
 
 ## Acceptance Test
 
-All key features listed in Release Notes 1.0.1 (2025-11-16) were tested in the delivered version. The system was exercised end-to-end in a typical user flow.
+All key features referenced in Release Notes 1.0.1 were evaluated in the delivered version, and the application was tested through a full end-to-end user journey. The workflow was examined across multiple interaction points to verify consistency, stability, and expected behaviour throughout the system.
 
-Across all tested areas, the implementation generally behaved as described in the Release Notes. The features functioned consistently, and no blocking issues were encountered during testing. The overall user journey operated smoothly and aligned with the expected behaviour for this release. One exception was noted: the Suggested activities dropdown did not consistently function and intermittently failed to display options.
-
+In general, the implementation performed reliably across the tested scenarios. Core functionality responded as intended, transitions between steps were stable, and the overall flow reflected the behaviour described in the release documentation. No critical failures or blocking defects were observed during testing. One recurring issue was identified with the Suggested activities dropdown, which did not consistently open and intermittently failed to operate as expected.
 
