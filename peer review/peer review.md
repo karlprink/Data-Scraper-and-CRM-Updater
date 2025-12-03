@@ -1,3 +1,7 @@
+## Team A33 code review
+
+**This review reviews a disclosure code and is, therefore, intentionally not highly detailed.**
+
 ## Code Review
 
 This codebase presents a well-structured foundation, utilizing a consistent template across all components, which promotes readability and maintainability. Module names are logically chosen, and the code is well-commented, suggesting a strong adherence to clarity and quality standards.
