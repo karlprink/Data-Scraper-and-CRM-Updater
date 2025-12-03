@@ -2,7 +2,7 @@
 
 This codebase presents a well-structured foundation, utilizing a consistent template across all components, which promotes readability and maintainability. Module names are logically chosen, and the code is well-commented, suggesting a strong adherence to clarity and quality standards.
 
-The primary area for improvement is in the onboarding process: a clear, step-by-step guide on how to build and execute the code should be featured in the README to simplify the currently complex startup procedure.
+
 
 ---
 
