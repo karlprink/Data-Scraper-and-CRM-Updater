@@ -44,7 +44,7 @@ jobs:
     name: Linting & Testing Python App
     runs-on: ubuntu-latest
     # Requires the 'security_and_format' job to succeed first
-    needs: [security_and_format]
+    needs: [ security_and_format ]
 
     steps:
       - name: 1. Checkout Code
@@ -73,7 +73,7 @@ jobs:
     name: Deploy to Production
     runs-on: ubuntu-latest
     # Only runs if the previous job ('build_and_test') succeeds
-    needs: [build_and_test]
+    needs: [ build_and_test ]
 
     # Optional: Use this if you need to protect the production environment
     # environment: production

@@ -2,7 +2,7 @@ import requests
 
 
 class AriregisterClient:
-    
+
     def __init__(self):
         pass
 

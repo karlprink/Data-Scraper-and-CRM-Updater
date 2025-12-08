@@ -29,29 +29,29 @@ def load_csv(url: str) -> pd.DataFrame:
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
     }
-    
+
     # Clean the URL by removing invisible Unicode characters
     url = url.strip()
     # Remove common invisible Unicode characters that can cause URL issues
-    invisible_chars = ['\u2066', '\u2067', '\u2068', '\u2069', '\u200e', '\u200f']
+    invisible_chars = ["\u2066", "\u2067", "\u2068", "\u2069", "\u200e", "\u200f"]
     for char in invisible_chars:
-        url = url.replace(char, '')
-    
+        url = url.replace(char, "")
+
     print(f"Loading CSV from: {url}")
 
     response = ariregister_client.get_csv(url, headers)
-    
+
     # Try pandas built-in compression support for ZIP files
-    if url.endswith('.zip'):
+    if url.endswith(".zip"):
         print("Detected ZIP file, using pandas compression support...")
-        df = pd.read_csv(io.BytesIO(response.content), sep=";", compression='zip')
+        df = pd.read_csv(io.BytesIO(response.content), sep=";", compression="zip")
     else:
         print("Reading as direct CSV file...")
         df = pd.read_csv(io.StringIO(response.text), sep=";")
-    
+
     df.to_csv(CACHE_FILE_PATH, sep=";", index=False)
     print(f"CACHE UPDATED: Saved new data to {CACHE_FILE_PATH}")
-    
+
     return df
 
 

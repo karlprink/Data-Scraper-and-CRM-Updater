@@ -17,6 +17,7 @@ CACHE_EXPIRATION = timedelta(hours=24)
 
 # --- Core Utility Functions ---
 
+
 def get_result_cache_path(target_code: str) -> str:
     """
     Generates the cache file path for a specific registry code.
@@ -82,7 +83,7 @@ def load_json(url: str, target_code: str) -> Optional[Dict[str, Any]]:
 
     # 2. Check/Download main ZIP file
     if (not os.path.exists(CACHE_FILE_PATH)) or (
-            time.time() - os.path.getmtime(CACHE_FILE_PATH)
+        time.time() - os.path.getmtime(CACHE_FILE_PATH)
     ) > CACHE_EXPIRATION.total_seconds():
         print(f"CACHE MISS: Downloading new ZIP file: {url}")
         headers = {"User-Agent": "Mozilla/5.0"}
@@ -104,18 +105,24 @@ def load_json(url: str, target_code: str) -> Optional[Dict[str, Any]]:
         # Assuming the JSON file is the first (and only) file in the ZIP
         json_filename = z.namelist()[0]
         with z.open(json_filename) as f:
-            print(f"Streaming JSON from ZIP ({json_filename}) and searching for {target_code}...")
+            print(
+                f"Streaming JSON from ZIP ({json_filename}) and searching for {target_code}..."
+            )
 
             try:
                 for obj in ijson.items(f, "item"):
                     # The 'ariregistri_kood' is the registry code in the JSON structure
                     if str(obj.get("ariregistri_kood")) == str(target_code):
-                        print(f"✅ Company {target_code} found, saving result to cache.")
+                        print(
+                            f"✅ Company {target_code} found, saving result to cache."
+                        )
                         with open(result_cache_file, "w", encoding="utf-8") as out:
                             json.dump(obj, out, ensure_ascii=False, indent=2)
                         return obj
             except ijson.common.IncompleteJSONError:
-                print("Warning: JSON parsing ended prematurely (possible ZIP file error).")
+                print(
+                    "Warning: JSON parsing ended prematurely (possible ZIP file error)."
+                )
 
     print(f"⚠️ Company with registry code {target_code} not found in the dataset.")
     return None

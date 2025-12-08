@@ -8,7 +8,7 @@ class MockNotionClient:
         self.headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
-            "Notion-Version": "2021-03-31"
+            "Notion-Version": "2021-03-31",
         }
         self.get_page_called = MagicMock()
         self.create_page_called = MagicMock()
@@ -17,50 +17,86 @@ class MockNotionClient:
 
     def get_page(self, page_id):
         self.get_page_called(page_id)
-        if page_id == 'UC1_main':
-            return {"properties": {"Registrikood": {"type": "number", "number": 11043099}}}
-        elif page_id == 'UC1_alt1_missing':
+        if page_id == "UC1_main":
+            return {
+                "properties": {"Registrikood": {"type": "number", "number": 11043099}}
+            }
+        elif page_id == "UC1_alt1_missing":
             return {"properties": {"Registrikood": {"type": "number", "number": None}}}
-        elif page_id == 'UC1_alt1_invalid':
+        elif page_id == "UC1_alt1_invalid":
             return {"properties": {"Registrikood": {"type": "number", "number": 10}}}
-        elif page_id == 'UC1_alt2':
-            return {"properties": {"Registrikood": {"type": "number", "number": 17281782}}}
-        elif page_id == 'UC3_main':
-            return {"properties": {
-            'Aadress': {None}, #This is a missing field that should be updated
-            'E-post': {'email': 'info@ideelabor.ee'},
-            'Kontaktisikud': {'people': ['TestPerson']}, #This value should not be updated
-            'LinkedIn': {'url': 'TestSite'}, #This value that should not be updated
-            'Maakond': {'multi_select': [{'name': 'Tartu maakond'}]},
-            'Nimi': {'title': [{'text': {'content': 'OÜ Ideelabor'}}]},
-            'Põhitegevus': {'rich_text': [{'text': {'content': 'Programmeerimine'}}]},
-            'Registrikood': {"type": "number", 'number': 11043099},
-            'Tegevusvaldkond': {'rich_text': [{'text': {'content': 'Info ja side'}}]},
-            'Tel. nr': {'phone_number': '+372 56208082'},
-            'Veebileht': {'url': 'https://ideelabor.ee'}
-            }}
-        elif page_id == 'UC3_alt1':
-            return {"properties": {
-            'Nimi': {'title': [{'text': {'content': 'Flowerflake OÜ'}}]},
-            'Registrikood': {"type": "number", 'number': 99},
-            'Aadress': {'rich_text': [{'text': {'content': 'Harju maakond, Rae vald, Järveküla, Ida põik 1'}}]},
-            'Maakond': {'multi_select': [{'name': 'Harju maakond'}]},
-            'E-post': {'email': 'smaragda.sarana@gmail.com'},
-            'Tel. nr': {'phone_number': None},
-            'Veebileht': {'url': None},
-            'LinkedIn': {'url': None},
-            'Kontaktisikud': {'people': []},
-            'Põhitegevus': {'rich_text': [{'text': {'content': 'Programmeerimine'}}]},
-            'Tegevusvaldkond': {'rich_text': [{'text': {'content': 'Info ja side'}}]}
-        }}
-        elif page_id == 'UC5_main':
-            return {"properties": {"Registrikood": {"type": "number", "number": 16359677}}}
-        elif page_id == 'UC5_alt1':
-            return {"properties": {"Registrikood": {"type": "number", "number": 16359677}}}
-        elif page_id == 'UC6_main':
-            return {"properties": {"Registrikood": {"type": "number", "number": 16359677}}}
-        elif page_id == 'UC6_alt1':
-            return {"properties": {"Registrikood": {"type": "number", "number": 14543684}}}
+        elif page_id == "UC1_alt2":
+            return {
+                "properties": {"Registrikood": {"type": "number", "number": 17281782}}
+            }
+        elif page_id == "UC3_main":
+            return {
+                "properties": {
+                    "Aadress": {None},  # This is a missing field that should be updated
+                    "E-post": {"email": "info@ideelabor.ee"},
+                    "Kontaktisikud": {
+                        "people": ["TestPerson"]
+                    },  # This value should not be updated
+                    "LinkedIn": {
+                        "url": "TestSite"
+                    },  # This value that should not be updated
+                    "Maakond": {"multi_select": [{"name": "Tartu maakond"}]},
+                    "Nimi": {"title": [{"text": {"content": "OÜ Ideelabor"}}]},
+                    "Põhitegevus": {
+                        "rich_text": [{"text": {"content": "Programmeerimine"}}]
+                    },
+                    "Registrikood": {"type": "number", "number": 11043099},
+                    "Tegevusvaldkond": {
+                        "rich_text": [{"text": {"content": "Info ja side"}}]
+                    },
+                    "Tel. nr": {"phone_number": "+372 56208082"},
+                    "Veebileht": {"url": "https://ideelabor.ee"},
+                }
+            }
+        elif page_id == "UC3_alt1":
+            return {
+                "properties": {
+                    "Nimi": {"title": [{"text": {"content": "Flowerflake OÜ"}}]},
+                    "Registrikood": {"type": "number", "number": 99},
+                    "Aadress": {
+                        "rich_text": [
+                            {
+                                "text": {
+                                    "content": "Harju maakond, Rae vald, Järveküla, Ida põik 1"
+                                }
+                            }
+                        ]
+                    },
+                    "Maakond": {"multi_select": [{"name": "Harju maakond"}]},
+                    "E-post": {"email": "smaragda.sarana@gmail.com"},
+                    "Tel. nr": {"phone_number": None},
+                    "Veebileht": {"url": None},
+                    "LinkedIn": {"url": None},
+                    "Kontaktisikud": {"people": []},
+                    "Põhitegevus": {
+                        "rich_text": [{"text": {"content": "Programmeerimine"}}]
+                    },
+                    "Tegevusvaldkond": {
+                        "rich_text": [{"text": {"content": "Info ja side"}}]
+                    },
+                }
+            }
+        elif page_id == "UC5_main":
+            return {
+                "properties": {"Registrikood": {"type": "number", "number": 16359677}}
+            }
+        elif page_id == "UC5_alt1":
+            return {
+                "properties": {"Registrikood": {"type": "number", "number": 16359677}}
+            }
+        elif page_id == "UC6_main":
+            return {
+                "properties": {"Registrikood": {"type": "number", "number": 16359677}}
+            }
+        elif page_id == "UC6_alt1":
+            return {
+                "properties": {"Registrikood": {"type": "number", "number": 14543684}}
+            }
         return {}
 
     def create_page(self, payload):

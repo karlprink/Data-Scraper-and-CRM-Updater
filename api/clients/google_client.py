@@ -8,7 +8,9 @@ class GoogleClient:
         self.key = key
         self.cx = cx
 
-    def get_search_results(self, query, timeout=6, result_number=10, gl="ee", lr="lang_et|lang_en"):
+    def get_search_results(
+        self, query, timeout=6, result_number=10, gl="ee", lr="lang_et|lang_en"
+    ):
         """Returns data as json file."""
         params = {
             "key": self.key,
@@ -18,6 +20,8 @@ class GoogleClient:
             "gl": gl,
             "lr": lr,
         }
-        r = requests.get("https://www.googleapis.com/customsearch/v1", params=params, timeout=timeout)
+        r = requests.get(
+            "https://www.googleapis.com/customsearch/v1", params=params, timeout=timeout
+        )
         r.raise_for_status()
         return r.json()

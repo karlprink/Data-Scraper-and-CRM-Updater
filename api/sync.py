@@ -9,7 +9,7 @@ from .config import load_config
 from .clients.google_client import GoogleClient
 
 # Set up basic logging
-logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 # Assuming these are relative imports in the project structure
 from .json_loader import find_company_by_regcode, clean_value
@@ -129,13 +129,17 @@ def google_find_website(company_name: str) -> Optional[str]:
             candidates.append((score, url, host))
 
         if not candidates:
-            logging.info("No suitable website candidate found among the first 10 Google CSE results.")
+            logging.info(
+                "No suitable website candidate found among the first 10 Google CSE results."
+            )
             return None
 
         # Sort by score (highest first); maintains original order for ties.
         candidates.sort(key=lambda t: t[0], reverse=True)
         best_score, best_url, best_host = candidates[0]
-        logging.info(f"Google CSE selected the best website (score={best_score}): {best_host} -> {best_url}")
+        logging.info(
+            f"Google CSE selected the best website (score={best_score}): {best_host} -> {best_url}"
+        )
         return best_url
 
     except Exception as e:
@@ -270,7 +274,9 @@ def get_emtak_section_text(emtak_code: Optional[str]) -> Optional[str]:
 # --- Data Transformation Functions ---
 
 
-def _prepare_notion_properties(company: Dict[str, Any], regcode: str) -> Tuple[Dict[str, Any], list, str]:
+def _prepare_notion_properties(
+    company: Dict[str, Any], regcode: str
+) -> Tuple[Dict[str, Any], list, str]:
     """
     Cleans company data and aggregates it into the Notion Properties format,
     tracking fields that remain empty.
@@ -285,14 +291,15 @@ def _prepare_notion_properties(company: Dict[str, Any], regcode: str) -> Tuple[D
         - empty_fields (list): A list of Notion fields that were left empty.
         - company_name (str): The cleaned company name.
     """
-    company_name = clean_value(company.get('nimi'))
+    company_name = clean_value(company.get("nimi"))
     # Clean the entire dictionary before building properties
     cleaned_company = {k: clean_value(v) for k, v in company.items()}
     return _build_properties_from_company(cleaned_company, regcode, company_name)
 
 
-def _build_properties_from_company(company: Dict[str, Any], regcode: str, company_name: str) -> Tuple[
-    Dict[str, Any], list, str]:
+def _build_properties_from_company(
+    company: Dict[str, Any], regcode: str, company_name: str
+) -> Tuple[Dict[str, Any], list, str]:
     """
     Constructs the Notion properties object based on cleaned JSON data.
 
@@ -313,7 +320,7 @@ def _build_properties_from_company(company: Dict[str, Any], regcode: str, compan
         - company_name (str): The company name.
     """
 
-    yldandmed = company.get('yldandmed', {})
+    yldandmed = company.get("yldandmed", {})
 
     email_val = None
     tel_val = None
@@ -321,12 +328,12 @@ def _build_properties_from_company(company: Dict[str, Any], regcode: str, compan
     linkedin_val = clean_value(company.get("linkedin"))
 
     # Extract communication data
-    sidevahendid = yldandmed.get('sidevahendid', [])
+    sidevahendid = yldandmed.get("sidevahendid", [])
     for item in sidevahendid:
-        sisu = clean_value(item.get('sisu'))
+        sisu = clean_value(item.get("sisu"))
         if not sisu:
             continue
-        liik = item.get('liik')
+        liik = item.get("liik")
         if liik == "EMAIL":
             email_val = sisu
         elif liik in ("TEL", "MOB"):
@@ -337,30 +344,36 @@ def _build_properties_from_company(company: Dict[str, Any], regcode: str, compan
             veeb_val = sisu
 
     # Extract address data
-    aadressid = yldandmed.get('aadressid', [])
-    aadress_täis_val = clean_value(
-        aadressid[0].get('aadress_ads__ads_normaliseeritud_taisaadress')) if aadressid and aadressid[0].get(
-        'aadress_ads__ads_normaliseeritud_taisaadress') else None
+    aadressid = yldandmed.get("aadressid", [])
+    aadress_täis_val = (
+        clean_value(aadressid[0].get("aadress_ads__ads_normaliseeritud_taisaadress"))
+        if aadressid
+        and aadressid[0].get("aadress_ads__ads_normaliseeritud_taisaadress")
+        else None
+    )
     aadress_val = aadress_täis_val  # Use full address as the main address field
 
     # Extract county (Maakond)
     maakond_val_raw = None
     if aadress_täis_val:
         # Assumes county is the first part of the full address string
-        parts = aadress_täis_val.split(',')
+        parts = aadress_täis_val.split(",")
         maakond_val_raw = parts[0].strip() if parts else None
 
     # Extract main activity (Põhitegevus)
-    tegevusalad = yldandmed.get('teatatud_tegevusalad', [])
+    tegevusalad = yldandmed.get("teatatud_tegevusalad", [])
     pohitegevusala = next(
-        (ta for ta in tegevusalad if ta.get('on_pohitegevusala') is True),
-        None
+        (ta for ta in tegevusalad if ta.get("on_pohitegevusala") is True), None
     )
 
     # 1. Get detailed EMTAK code (e.g., '73111') and text (e.g., 'Reklaamiagentuuride tegevus')
     # FIX APPLIED: Using 'emtak_kood' from JSON, as 'emtak_kood_tekstina' is often None/missing the raw code.
-    emtak_kood_val = clean_value(pohitegevusala.get("emtak_kood")) if pohitegevusala else None
-    emtak_detailne_tekst_val = clean_value(pohitegevusala.get("emtak_tekstina")) if pohitegevusala else None
+    emtak_kood_val = (
+        clean_value(pohitegevusala.get("emtak_kood")) if pohitegevusala else None
+    )
+    emtak_detailne_tekst_val = (
+        clean_value(pohitegevusala.get("emtak_tekstina")) if pohitegevusala else None
+    )
 
     # 2. Use the 2-digit code to find the broader section (Tegevusvaldkond)
     emtak_jaotis_val = get_emtak_section_text(emtak_kood_val)
@@ -378,39 +391,57 @@ def _build_properties_from_company(company: Dict[str, Any], regcode: str, compan
 
     # Prepare simple value Notion properties
     email_prop = {"email": email_val} if email_val else {"email": "E-maili ei leitud."}
-    tel_prop = {"phone_number": tel_val} if tel_val else {"phone_number": "Telefoni numbrit ei leitud."}
+    tel_prop = (
+        {"phone_number": tel_val}
+        if tel_val
+        else {"phone_number": "Telefoni numbrit ei leitud."}
+    )
     veeb_prop = {"url": veeb_val} if veeb_val else {"url": "Veebilehte ei leitud."}
-    linkedin_prop = {"url": linkedin_val} if linkedin_val else {"url": "LinkedIn-i ei leitud."}
+    linkedin_prop = (
+        {"url": linkedin_val} if linkedin_val else {"url": "LinkedIn-i ei leitud."}
+    )
 
     # Track simple empty fields
-    if not email_val: empty_fields.append("E-post (Email)")
-    if not tel_val: empty_fields.append("Tel. nr (Phone No)")
-    if not veeb_val: empty_fields.append("Veebileht (Website)")
-    if not linkedin_val: empty_fields.append("LinkedIn")
-    if not aadress_val: empty_fields.append("Aadress (Address)")
+    if not email_val:
+        empty_fields.append("E-post (Email)")
+    if not tel_val:
+        empty_fields.append("Tel. nr (Phone No)")
+    if not veeb_val:
+        empty_fields.append("Veebileht (Website)")
+    if not linkedin_val:
+        empty_fields.append("LinkedIn")
+    if not aadress_val:
+        empty_fields.append("Aadress (Address)")
 
     # Track activity fields
-    if not emtak_detailne_tekst_val: empty_fields.append("Põhitegevus (Main Activity)")
-    if not emtak_jaotis_val: empty_fields.append("Tegevusvaldkond (Industry Section)")
+    if not emtak_detailne_tekst_val:
+        empty_fields.append("Põhitegevus (Main Activity)")
+    if not emtak_jaotis_val:
+        empty_fields.append("Tegevusvaldkond (Industry Section)")
 
     properties = {
         "Nimi": {"title": [{"text": {"content": company_name or ""}}]},  # Name
         # Assuming Registrikood property is set as 'Number' in Notion
-        "Registrikood": {"number": int(regcode)} if regcode.isdigit() else {"number": None},  # Registry Code
-        "Aadress": {
-            "rich_text": [{"text": {"content": aadress_val or ""}}]},  # Address
+        "Registrikood": (
+            {"number": int(regcode)} if regcode.isdigit() else {"number": None}
+        ),  # Registry Code
+        "Aadress": {"rich_text": [{"text": {"content": aadress_val or ""}}]},  # Address
         "Maakond": maakond_prop,  # County
         "E-post": email_prop,  # Email
         "Tel. nr": tel_prop,  # Phone No
         "Veebileht": veeb_prop,  # Website
         "LinkedIn": linkedin_prop,
-        "Kontaktisikud": {"people": yldandmed.get("kontaktisikud_list", [])},  # Contact Persons (People property)
-
+        "Kontaktisikud": {
+            "people": yldandmed.get("kontaktisikud_list", [])
+        },  # Contact Persons (People property)
         # Põhitegevus (Main Activity): Detailed text from JSON
-        "Põhitegevus": {"rich_text": [{"text": {"content": emtak_detailne_tekst_val or ""}}]},
-
+        "Põhitegevus": {
+            "rich_text": [{"text": {"content": emtak_detailne_tekst_val or ""}}]
+        },
         # Tegevusvaldkond (Industry Section): Broad category from EMTAK_MAP
-        "Tegevusvaldkond": {"rich_text": [{"text": {"content": emtak_jaotis_val or ""}}]}
+        "Tegevusvaldkond": {
+            "rich_text": [{"text": {"content": emtak_jaotis_val or ""}}]
+        },
     }
 
     # NOTE: Set value to None instead of placeholder text to allow Notion to accept a true empty value if needed
@@ -449,27 +480,26 @@ def load_company_data(regcode: str, config: Dict[str, Any]) -> Dict[str, Any]:
     if not regcode or not str(regcode).isdigit():
         return {
             "status": "error",
-            "message": "Registry code is missing or contains non-digit characters (must be a number)."
+            "message": "Registry code is missing or contains non-digit characters (must be a number).",
         }
 
     try:
         # find_company_by_regcode automatically cleans the data (clean_value)
         company = find_company_by_regcode(config["ariregister"]["json_url"], regcode)
     except Exception as e:
-        return {
-            "status": "error",
-            "message": f"Error loading file: {e}"
-        }
+        return {"status": "error", "message": f"Error loading file: {e}"}
 
     if not company:
         return {
             "status": "error",
-            "message": f"Company with registry code {regcode} not found in the Business Register data (JSON)."
+            "message": f"Company with registry code {regcode} not found in the Business Register data (JSON).",
         }
 
-    company_name = clean_value(company.get('nimi'))
+    company_name = clean_value(company.get("nimi"))
     # Prepare properties using the corrected logic
-    properties, empty_fields, company_name = _build_properties_from_company(company, regcode, company_name)
+    properties, empty_fields, company_name = _build_properties_from_company(
+        company, regcode, company_name
+    )
 
     return {
         "status": "ready",
@@ -479,11 +509,13 @@ def load_company_data(regcode: str, config: Dict[str, Any]) -> Dict[str, Any]:
             "empty_fields": empty_fields,
             "company_name": company_name,
         },
-        "message": f"Data found: {company_name} ({regcode})."
+        "message": f"Data found: {company_name} ({regcode}).",
     }
 
 
-def process_company_sync(data: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:
+def process_company_sync(
+    data: Dict[str, Any], config: Dict[str, Any]
+) -> Dict[str, Any]:
     """
     Performs the final Notion API synchronization: creating a new page or
     updating an existing one based on the registry code.
@@ -504,13 +536,13 @@ def process_company_sync(data: Dict[str, Any], config: Dict[str, Any]) -> Dict[s
     notion = NotionClient(
         config["notion"]["token"],
         config["notion"]["database_id"],
-        config["notion"]["api_version"]
+        config["notion"]["api_version"],
     )
 
     # Compose full payload for creation
     full_payload = {
         "parent": {"database_id": notion.database_id},
-        "properties": properties
+        "properties": properties,
     }
 
     try:
@@ -546,12 +578,12 @@ def process_company_sync(data: Dict[str, Any], config: Dict[str, Any]) -> Dict[s
 
         return {
             "status": "error",
-            "message": f"❌ Notion API Error ({e.response.status_code}): {error_details}"
+            "message": f"❌ Notion API Error ({e.response.status_code}): {error_details}",
         }
     except Exception as e:
         return {
             "status": "error",
-            "message": f"❌ General Synchronization Error: {type(e).__name__}: {e}"
+            "message": f"❌ General Synchronization Error: {type(e).__name__}: {e}",
         }
 
 
@@ -597,10 +629,15 @@ def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, 
         reg_prop = props.get("Registrikood")
 
         if not reg_prop:
-            logging.error(f"Page 'Registrikood' property is missing. Available properties: {list(props.keys())}")
+            logging.error(
+                f"Page 'Registrikood' property is missing. Available properties: {list(props.keys())}"
+            )
             # Translate message
-            return {"success": False, "message": "The 'Registrikood' property is missing on the Notion page.",
-                    "step": "missing_registrikood"}
+            return {
+                "success": False,
+                "message": "The 'Registrikood' property is missing on the Notion page.",
+                "step": "missing_registrikood",
+            }
 
         # Logic to extract regcode regardless of property type (Number, Title, Rich Text)
         prop_type = reg_prop.get("type")
@@ -613,15 +650,21 @@ def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, 
             texts = reg_prop.get(prop_type) or []
             if texts:
                 # Use plain_text or text content and extract only digits
-                content = texts[0].get("plain_text") or texts[0].get("text", {}).get("content")
+                content = texts[0].get("plain_text") or texts[0].get("text", {}).get(
+                    "content"
+                )
                 if content:
-                    regcode = ''.join(ch for ch in content if ch.isdigit())
+                    regcode = "".join(ch for ch in content if ch.isdigit())
 
         if not regcode:
             error_msg = "'Registrikood' value is empty or in an invalid format on the Notion page."
             logging.warning(error_msg)
             # Translate message
-            return {"success": False, "message": error_msg, "step": "invalid_registrikood"}
+            return {
+                "success": False,
+                "message": error_msg,
+                "step": "invalid_registrikood",
+            }
 
         logging.info(f"Found Registrikood: {regcode}")
 
@@ -643,20 +686,29 @@ def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, 
         error_msg = f"Company with registry code {regcode} not found in JSON data."
         logging.warning(error_msg)
         # Translate message
-        return {"success": False, "message": error_msg, "step": "company_not_found", "regcode": regcode}
+        return {
+            "success": False,
+            "message": error_msg,
+            "step": "company_not_found",
+            "regcode": regcode,
+        }
 
     logging.info(f"Found matching company in JSON: {clean_value(company.get('nimi'))}")
 
     # 3. Prepare Payload and Update Notion
-    company_name = clean_value(company.get('nimi'))
-    properties, empty_fields, _ = _build_properties_from_company(company, regcode, company_name)
+    company_name = clean_value(company.get("nimi"))
+    properties, empty_fields, _ = _build_properties_from_company(
+        company, regcode, company_name
+    )
     logging.debug("Built properties payload to send to Notion.")
 
     # 3.1 If Website is missing, try finding it via Google CSE (first 10, scored)
     veeb_prop = properties.get("Veebileht", {})
     existing_url = veeb_prop.get("url")
     if not existing_url:
-        logging.info("Website is missing in Business Register data – trying to find via Google CSE.")
+        logging.info(
+            "Website is missing in Business Register data – trying to find via Google CSE."
+        )
         homepage = google_find_website(company_name)
         if homepage:
             properties["Veebileht"]["url"] = homepage
@@ -665,11 +717,14 @@ def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, 
                 empty_fields.remove("Veebileht (Website)")
         else:
             logging.info(
-                "Google did not find a suitable website (among the first 10 results), leaving 'Veebileht' empty.")
+                "Google did not find a suitable website (among the first 10 results), leaving 'Veebileht' empty."
+            )
 
     try:
         notion.update_page(page_id, properties)
-        message = f"✅ Data successfully autofilled for page {company_name} ({regcode})."
+        message = (
+            f"✅ Data successfully autofilled for page {company_name} ({regcode})."
+        )
 
         if empty_fields:
             # Translate the warning message

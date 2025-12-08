@@ -14,7 +14,7 @@ from .clients.company_website_client import CompanyWebsiteClient
 load_dotenv()
 
 config = load_config()
-AI_MODEL = config['google']['ai_model']
+AI_MODEL = config["google"]["ai_model"]
 # Configure the client
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
@@ -33,13 +33,13 @@ def get_website_text(url):
     print(f"   ... Downloading content from: {url}")
     try:
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36"
         }
         # Use the injected CompanyWebsiteClient to fetch the page
         response = company_website_client.get_company_website(url, headers)
 
         # Parse the HTML content
-        soup = BeautifulSoup(response.text, 'html.parser')
+        soup = BeautifulSoup(response.text, "html.parser")
 
         # Remove script and style elements
         for script_or_style in soup(["script", "style"]):
@@ -49,7 +49,7 @@ def get_website_text(url):
         text = soup.get_text()
         lines = (line.strip() for line in text.splitlines())
         chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
-        cleaned_text = '\n'.join(chunk for chunk in chunks if chunk)
+        cleaned_text = "\n".join(chunk for chunk in chunks if chunk)
 
         print("   ... Content successfully downloaded and cleaned.")
         return cleaned_text
@@ -68,18 +68,18 @@ def find_contact_page_url(base_url):
 
     try:
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36"
         }
         # Use the injected CompanyWebsiteClient to fetch the page
         response = company_website_client.get_company_website(base_url, headers)
 
-        soup = BeautifulSoup(response.text, 'html.parser')
+        soup = BeautifulSoup(response.text, "html.parser")
 
         links = []
         # Find all <a> (link) tags
-        for a_tag in soup.find_all('a', href=True):
+        for a_tag in soup.find_all("a", href=True):
             link_text = a_tag.get_text(strip=True).lower()
-            link_href = a_tag['href']
+            link_href = a_tag["href"]
 
             # Convert relative links (e.g., /contact) to full URLs
             full_url = urljoin(base_url, link_href)
@@ -116,7 +116,9 @@ def find_contact_page_url(base_url):
         suggested_url = response.text.strip()
 
         if "NONE" in suggested_url or "http" not in suggested_url:
-            print(f"   ... Gemini did not find a suitable subpage, using the main page: {base_url}")
+            print(
+                f"   ... Gemini did not find a suitable subpage, using the main page: {base_url}"
+            )
             return base_url
         else:
             print(f"   ... Gemini suggested the contact page: {suggested_url}")
@@ -204,7 +206,9 @@ def run_full_staff_search(base_url):
 
         print("\n--- Response (Raw Content) ---")
         # Clean up the response to show only JSON
-        json_response = response.text.strip().lstrip("```json").lstrip("```").rstrip("```")
+        json_response = (
+            response.text.strip().lstrip("```json").lstrip("```").rstrip("```")
+        )
 
         # Fix reversed email addresses (a common anti-bot technique)
         print("\nStep 4: Fixing reversed email addresses...")
@@ -212,9 +216,15 @@ def run_full_staff_search(base_url):
             data = json.loads(json_response)
             if isinstance(data, list):
                 for item in data:
-                    if isinstance(item, dict) and 'email' in item and isinstance(item['email'], str):
+                    if (
+                        isinstance(item, dict)
+                        and "email" in item
+                        and isinstance(item["email"], str)
+                    ):
                         # Assuming the anti-bot technique reverses the email, e.g., "ee.tnak_tsim_oin" -> "nio_mist_kante.ee"
-                        if item['email'].startswith("ee.") or item['email'].endswith(".ee"):
+                        if item["email"].startswith("ee.") or item["email"].endswith(
+                            ".ee"
+                        ):
                             # This specific check for "ee." seems tailored to a local/specific reversal pattern.
                             # A more general reversal check is:
                             # if '.' in item['email'] and '@' in item['email'] and item['email'] == item['email'][::-1][::-1]:
@@ -224,7 +234,7 @@ def run_full_staff_search(base_url):
                             # Sticking to the original logic which checks for a start pattern indicating a reversed string
                             # and performs a reversal:
 
-                            item['email'] = item['email'][::-1]
+                            item["email"] = item["email"][::-1]
             fixed_json = json.dumps(data, indent=2, ensure_ascii=False)
             print(fixed_json)
             print("--------------------------------\n")

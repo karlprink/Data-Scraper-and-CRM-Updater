@@ -4,7 +4,6 @@ import requests
 class NotionClient:
     """Class for communicating with the Notion API."""
 
-
     def __init__(self, token: str, database_id: str, api_version: str):
         self.token = token
         self.database_id = database_id
@@ -12,7 +11,7 @@ class NotionClient:
         self.headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
-            "Notion-Version": self.api_version
+            "Notion-Version": self.api_version,
         }
 
     def get_page(self, page_id: str):
@@ -48,10 +47,7 @@ class NotionClient:
         url = f"https://api.notion.com/v1/databases/{self.database_id}/query"
 
         payload = {
-            "filter": {
-                "property": "Registrikood",
-                "number": {"equals": int(regcode)}
-            }
+            "filter": {"property": "Registrikood", "number": {"equals": int(regcode)}}
         }
 
         r = requests.post(url, headers=self.headers, json=payload)

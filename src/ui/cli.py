@@ -1,6 +1,7 @@
 import argparse
 import sys
 from src.ui.config_loader import load_config
+
 # EELDAME, ET NEED FUNKTSIOONID ON JUBA ÕIGESTI DEFINEERITUD
 from api.sync import load_company_data, process_company_sync, autofill_page_by_page_id
 
@@ -15,11 +16,17 @@ def print_properties(properties: dict):
         if key == "Registrikood":
             display_data[key] = value.get("number")
         elif key == "Nimi":
-            display_data[key] = value.get("title", [{}])[0].get("text", {}).get("content", "Missing")
+            display_data[key] = (
+                value.get("title", [{}])[0].get("text", {}).get("content", "Missing")
+            )
         elif key in ["Aadress", "Tegevusvaldkond", "Põhitegevus"]:
-            display_data[key] = value.get("rich_text", [{}])[0].get("text", {}).get("content", "")
+            display_data[key] = (
+                value.get("rich_text", [{}])[0].get("text", {}).get("content", "")
+            )
         elif key == "Maakond":
-            display_data[key] = ", ".join([v["name"] for v in value.get("multi_select", [])])
+            display_data[key] = ", ".join(
+                [v["name"] for v in value.get("multi_select", [])]
+            )
         elif key in ["E-post", "Tel. nr", "Veebileht", "LinkedIn"]:
             # URL, email, phone_number
             # Use next() to safely retrieve the first key (which holds the value)
@@ -40,7 +47,9 @@ def print_properties(properties: dict):
 def handle_new_sync_mode(config: dict):
     """Käitleb uue kirje loomist registrikoodi kaudu (interaktiivne ja kinnitusega)."""
 
-    regcode = input("Palun sisesta ettevõtte **registrikood** (vajuta 'Enter' tühistamiseks): ").strip()
+    regcode = input(
+        "Palun sisesta ettevõtte **registrikood** (vajuta 'Enter' tühistamiseks): "
+    ).strip()
 
     if not regcode:
         print("Tühistatud.")
@@ -61,12 +70,13 @@ def handle_new_sync_mode(config: dict):
 
     if data_to_sync["empty_fields"]:
         print(
-            f"⚠️ HOIATUS: Järgmised väljad jäid tühjaks: {', '.join(data_to_sync['empty_fields'])}. Need jäävad ka Notionis tühjaks.")
+            f"⚠️ HOIATUS: Järgmised väljad jäid tühjaks: {', '.join(data_to_sync['empty_fields'])}. Need jäävad ka Notionis tühjaks."
+        )
 
     # 4. Ask for user confirmation
     user_input = input("Kas soovite need andmed Notioni laadida (Y/n)? ").lower()
 
-    if user_input != 'y' and user_input != '':
+    if user_input != "y" and user_input != "":
         print("Tühistatud. Andmeid Notioni ei laetud.")
         sys.exit(0)
 
@@ -84,7 +94,9 @@ def handle_new_sync_mode(config: dict):
 def handle_autofill_mode(config: dict):
     """Käitleb olemasoleva kirje automaatset täitmist lehe ID kaudu (ilma kinnituseta)."""
 
-    page_id = input("Palun sisesta Notioni **lehe ID** (id()) automaattäitmiseks: ").strip()
+    page_id = input(
+        "Palun sisesta Notioni **lehe ID** (id()) automaattäitmiseks: "
+    ).strip()
 
     if not page_id:
         print("Tühistatud.")
@@ -101,11 +113,17 @@ def run_cli():
     config = load_config()
 
     if len(sys.argv) > 1:
-        parser = argparse.ArgumentParser(description="Sünkrooni Äriregistri andmed Notioni")
+        parser = argparse.ArgumentParser(
+            description="Sünkrooni Äriregistri andmed Notioni"
+        )
         group = parser.add_mutually_exclusive_group(required=True)
-        group.add_argument("--regcode",
-                           help="Ettevõtte registrikood (kasutatakse uue kirje loomiseks ilma kinnituseta)")
-        group.add_argument("--page-id", help="Notioni lehe ID (id()) automaattäitmiseks")
+        group.add_argument(
+            "--regcode",
+            help="Ettevõtte registrikood (kasutatakse uue kirje loomiseks ilma kinnituseta)",
+        )
+        group.add_argument(
+            "--page-id", help="Notioni lehe ID (id()) automaattäitmiseks"
+        )
         args = parser.parse_args()
 
         if args.page_id:
@@ -130,11 +148,13 @@ def run_cli():
         # Interaktiivne režiim (kui argumente pole antud)
         print("Käivitatud režiimis: Interaktiivne menüü.")
 
-        mode = input("Vali režiim: [1] Uus kirje (registrikood) või [2] Täida olemasolev (lehe ID): ").strip()
+        mode = input(
+            "Vali režiim: [1] Uus kirje (registrikood) või [2] Täida olemasolev (lehe ID): "
+        ).strip()
 
-        if mode == '1':
+        if mode == "1":
             handle_new_sync_mode(config)
-        elif mode == '2':
+        elif mode == "2":
             handle_autofill_mode(config)
         else:
             print("Vigane valik. Programmi töö lõpetati.")

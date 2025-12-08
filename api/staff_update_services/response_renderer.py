@@ -1,6 +1,7 @@
 """
 HTML response rendering for staff update endpoint.
 """
+
 import json
 from flask import render_template_string
 from typing import Dict, Any, Optional, Union, Tuple, List
@@ -51,18 +52,18 @@ def prepare_result_message(
     replaced_count: int,
     failed_count: int,
     staff_found_count: int,
-    errors: List[str]
+    errors: List[str],
 ) -> Tuple[str, str, str, Optional[Dict[str, Any]]]:
     """
     Prepares the result message and status for the response.
-    
+
     Args:
         created_count: Number of successfully created pages
         replaced_count: Number of pages that replaced existing ones
         failed_count: Number of failed page creations
         staff_found_count: Total number of staff members found
         errors: List of error messages
-        
+
     Returns:
         Tuple of (status_text, status_class, message, debug_info)
     """
@@ -93,7 +94,7 @@ def prepare_result_message(
             result_message = f"✅ Edukalt loodud {created_count} kontaktisiku lehte veebilehelt leitud kontaktisikute põhjal ({new_count} uut, {replaced_count} uuendatud)."
         else:
             result_message = f"✅ Edukalt loodud {created_count} kontaktisiku lehte veebilehelt leitud kontaktisikute põhjal."
-    
+
     # Prepare debug info if there are many errors
     debug_info = None
     if errors and len(errors) > 3:
@@ -102,9 +103,9 @@ def prepare_result_message(
             "created": created_count,
             "replaced": replaced_count,
             "failed": failed_count,
-            "all_errors": errors
+            "all_errors": errors,
         }
-    
+
     return status_text, status_class, result_message, debug_info
 
 
@@ -113,47 +114,48 @@ def render_error_response(
     message: str,
     notion_url: Optional[str] = None,
     debug_info: Optional[Union[str, Dict[str, Any]]] = None,
-    status_code: int = 400
+    status_code: int = 400,
 ) -> Tuple[str, int]:
     """
     Renders an error response HTML page.
-    
+
     Args:
         status: Status text
         message: Error message
         notion_url: Optional redirect URL
         debug_info: Optional debug information
         status_code: HTTP status code
-        
+
     Returns:
         Tuple of (rendered HTML, status_code)
     """
     if isinstance(debug_info, dict):
         debug_info = json.dumps(debug_info, indent=2, ensure_ascii=False)
-    
-    return render_template_string(
-        HTML_TEMPLATE,
-        status=status,
-        status_class="error",
-        message=message,
-        redirect_url=notion_url,
-        debug_info=debug_info
-    ), status_code
+
+    return (
+        render_template_string(
+            HTML_TEMPLATE,
+            status=status,
+            status_class="error",
+            message=message,
+            redirect_url=notion_url,
+            debug_info=debug_info,
+        ),
+        status_code,
+    )
 
 
 def render_warning_response(
-    message: str,
-    notion_url: Optional[str] = None,
-    debug_info: Optional[str] = None
+    message: str, notion_url: Optional[str] = None, debug_info: Optional[str] = None
 ) -> str:
     """
     Renders a warning response HTML page.
-    
+
     Args:
         message: Warning message
         notion_url: Optional redirect URL
         debug_info: Optional debug information
-        
+
     Returns:
         Rendered HTML
     """
@@ -163,7 +165,7 @@ def render_warning_response(
         status_class="warning",
         message=message,
         redirect_url=notion_url,
-        debug_info=debug_info
+        debug_info=debug_info,
     )
 
 
@@ -172,31 +174,30 @@ def render_success_response(
     status_class: str,
     message: str,
     notion_url: Optional[str] = None,
-    debug_info: Optional[Dict[str, Any]] = None
+    debug_info: Optional[Dict[str, Any]] = None,
 ) -> str:
     """
     Renders a success response HTML page.
-    
+
     Args:
         status: Status text
         status_class: CSS class for status
         message: Success message
         notion_url: Optional redirect URL
         debug_info: Optional debug information
-        
+
     Returns:
         Rendered HTML
     """
     debug_info_str = None
     if debug_info:
         debug_info_str = json.dumps(debug_info, indent=2, ensure_ascii=False)
-    
+
     return render_template_string(
         HTML_TEMPLATE,
         status=status,
         status_class=status_class,
         message=message,
         redirect_url=notion_url,
-        debug_info=debug_info_str
+        debug_info=debug_info_str,
     )
-

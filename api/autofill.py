@@ -30,6 +30,7 @@ AUTO_CLOSE_HTML = """
 
 # --- Notion Status Update Utility ---
 
+
 def update_autofill_status(page_id: str, status_text: str, config: Dict[str, Any]):
     """
     Writes to the 'Auto-fill Status' (Rich text) field of a Notion page.
@@ -45,14 +46,19 @@ def update_autofill_status(page_id: str, status_text: str, config: Dict[str, Any
     notion = NotionClient(NOTION_API_KEY, NOTION_DATABASE_ID)
     try:
         # Add "type": "text" – Notion's official structure
-        notion.update_page(page_id, {
-            "Auto-fill Status": {
-                "rich_text": [{
-                    "type": "text",
-                    "text": {"content": (status_text or "")[:1900]}
-                }]
-            }
-        })
+        notion.update_page(
+            page_id,
+            {
+                "Auto-fill Status": {
+                    "rich_text": [
+                        {
+                            "type": "text",
+                            "text": {"content": (status_text or "")[:1900]},
+                        }
+                    ]
+                }
+            },
+        )
     except Exception as e:
         # Keep error logging minimal; must not stop the main flow
         traceback.print_exc()
@@ -60,7 +66,8 @@ def update_autofill_status(page_id: str, status_text: str, config: Dict[str, Any
 
 # --- API Endpoints ---
 
-@app.route('/api/autofill', methods=['GET', 'POST'])
+
+@app.route("/api/autofill", methods=["GET", "POST"])
 def autofill():
     """
     Variant A:
@@ -81,11 +88,11 @@ def autofill():
 
     try:
         # pageId can come from a GET query, POST body, or POST query
-        if request.method == 'GET':
-            page_id = request.args.get('pageId')
+        if request.method == "GET":
+            page_id = request.args.get("pageId")
         else:
             data = request.get_json(silent=True) or {}
-            page_id = data.get('pageId') or request.args.get('pageId')
+            page_id = data.get("pageId") or request.args.get("pageId")
 
         if not page_id:
             # page_id is missing – cannot do anything; close the tab.
@@ -94,7 +101,9 @@ def autofill():
         if not config_ok:
             # Required config is missing – try to write an error message to Notion at least (if possible at all).
             try:
-                update_autofill_status(page_id, "Error: Missing configuration (EST)", config)
+                update_autofill_status(
+                    page_id, "Error: Missing configuration (EST)", config
+                )
             except Exception:
                 pass
             return Response(AUTO_CLOSE_HTML, mimetype="text/html", status=200)
@@ -118,14 +127,16 @@ def autofill():
         # Try to write critical error to Notion, if page_id is known and config is ok
         if page_id and config_ok:
             try:
-                update_autofill_status(page_id, f"Error: {type(e).__name__}: {e}", config)
+                update_autofill_status(
+                    page_id, f"Error: {type(e).__name__}: {e}", config
+                )
             except Exception:
                 pass
         # And close the tab anyway
         return Response(AUTO_CLOSE_HTML, mimetype="text/html", status=200)
 
 
-@app.route('/', methods=['GET'])
+@app.route("/", methods=["GET"])
 def health_check():
     """
     Simple health check endpoint to confirm the API is running.
@@ -139,4 +150,4 @@ def health_check():
 # --- Local Development Entry Point ---
 if __name__ == "__main__":
     print("Starting Flask API on http://localhost:5001")
-    app.run(debug=True, host='0.0.0.0', port=5001)
+    app.run(debug=True, host="0.0.0.0", port=5001)
