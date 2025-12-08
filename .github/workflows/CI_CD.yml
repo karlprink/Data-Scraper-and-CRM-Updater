@@ -50,6 +50,14 @@ jobs:
     # Requires the 'security_and_format' job to succeed first
     needs: [ security_and_format ]
 
+    env:
+      PYTHON_VERSION: '3.10'
+      # The AI model name must be provided (e.g., from a config file or .env)
+      AI_MODEL: ${{ secrets.GEMINI_MODEL }}
+      # The API key must be passed securely from GitHub Secrets
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+
     steps:
       - name: 1. Checkout Code
         uses: actions/checkout@v4
