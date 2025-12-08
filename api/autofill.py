@@ -102,7 +102,7 @@ def autofill():
             # Required config is missing – try to write an error message to Notion at least (if possible at all).
             try:
                 update_autofill_status(
-                    page_id, "Error: Missing configuration (EST)", config
+                    page_id, "Viga: Puuduv konfiguratsioon (EST)", config
                 )
             except Exception:
                 pass
