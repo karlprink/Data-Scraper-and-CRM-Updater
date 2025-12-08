@@ -56,7 +56,7 @@ def load_csv(url: str) -> pd.DataFrame:
 
 
 def find_company_by_regcode(df: pd.DataFrame, regcode: str) -> dict | None:
-    """Leiab ettevõtte DataFrame'ist registrikoodi järgi."""
+    """Finds company by registry code."""
 
     row = df[df["ariregistri_kood"].astype(str) == str(regcode)]
     if not row.empty:

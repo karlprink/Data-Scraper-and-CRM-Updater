@@ -9,7 +9,7 @@ class GoogleClient:
         self.cx = cx
 
     def get_search_results(self, query, timeout=6, result_number=10, gl="ee", lr="lang_et|lang_en"):
-        """Tagastab antud otsingu tulemused json formaadis"""
+        """Returns data as json file."""
         params = {
             "key": self.key,
             "cx": self.cx,

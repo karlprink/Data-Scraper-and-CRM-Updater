@@ -16,14 +16,14 @@ from .json_loader import find_company_by_regcode, clean_value
 from .clients.notion_client import NotionClient
 
 # --------------------------------------------------------------------
-# GOOGLE CUSTOM SEARCH – kodulehe leidmine, kui Äriregistris WWW puudub
+# GOOGLE CUSTOM SEARCH – Finding the company website if missing in Business Register
 # --------------------------------------------------------------------
 
 config = load_config()
 GOOGLE_API_KEY = config.get("google", {}).get("api_key")
 GOOGLE_CSE_CX = config.get("google", {}).get("cse_cx")
 
-# Must nimekiri domeenidest, mida EI taha "koduleheks"
+# Blacklist of domains we DON'T want as the "homepage"
 BLACKLIST_HOSTS = {
     "ariregister.rik.ee",
     "rik.ee",
@@ -46,7 +46,7 @@ BLACKLIST_HOSTS = {
 
 
 def _normalize_host(url: str) -> str:
-    """Tagastab URL-i hosti väikeste tähtedega, vea korral tühja stringi."""
+    """Returns the URL's host in lowercase, or an empty string on error."""
     try:
         host = urlparse(url).hostname or ""
         return host.lower()
@@ -55,16 +55,16 @@ def _normalize_host(url: str) -> str:
 
 
 def _host_blacklisted(host: str) -> bool:
-    """Kontrollib, kas host kuulub musta nimekirja (registrid, kataloogid, sotsiaal jne)."""
+    """Checks if the host belongs to the blacklist (registers, directories, social media, etc.)."""
     return any(b in host for b in BLACKLIST_HOSTS)
 
 
 def _name_tokens(company_name: str):
     """
-    Võtab ettevõtte nimest tokenid:
-    - väiketähtedeks
-    - jagab mitte-alfanum märgi järgi
-    - eemaldab tüüpsufiksid (OÜ, AS, UAB, jne) ja liiga lühikesed tokenid
+    Extracts tokens from the company name:
+    - Converts to lowercase
+    - Splits by non-alphanumeric characters
+    - Removes common suffixes (OÜ, AS, UAB, etc.) and short tokens
     """
     tokens = re.split(r"[^a-z0-9]+", company_name.lower())
     stop = {"ou", "oü", "as", "uab", "gmbh", "ltd", "oy", "sp", "z", "uü"}
@@ -73,11 +73,11 @@ def _name_tokens(company_name: str):
 
 def _score_candidate(host: str, company_name: str) -> int:
     """
-    Lihtne skoor:
-    - +3 kui host lõppeb .ee
-    - +2 kui mõni nime-token esineb hostis
-    - muidu 0
-    Kõrgem skoor = parem kandidaat.
+    Simple scoring mechanism:
+    - +3 if the host ends with .ee
+    - +2 if any name token appears in the host
+    - otherwise 0
+    Higher score = better candidate.
     """
     score = 0
     if host.endswith(".ee"):
@@ -90,24 +90,24 @@ def _score_candidate(host: str, company_name: str) -> int:
 
 def google_find_website(company_name: str) -> Optional[str]:
     """
-    Kasutab Google Custom Search JSON API-t, et leida ettevõtte koduleht.
+    Uses the Google Custom Search JSON API to find the company's website.
 
-    Loogika:
-    - Query: "<firma nimi> official website"
-    - Võtab kuni 10 esimest tulemust.
-    - Filtreerib välja:
-        * mustas nimekirjas oleva hostiga URL-id (registrid, kataloogid, sotsiaal jne)
-    - Ülejäänute seast:
-        * arvutab skoori (_score_candidate):
-            - eelistab .ee domeene
-            - eelistab hoste, kus esineb firma nime token
-        * valib suurima skooriga kandidaadi (esimese, kui viik)
-    - Kui sobivat kandidaati ei leidu, tagastab None.
+    Logic:
+    - Query: "<company name> official website"
+    - Takes up to the first 10 results.
+    - Filters out:
+        * URLs with a blacklisted host (registers, directories, social media, etc.)
+    - Among the remaining candidates:
+        * Calculates a score (_score_candidate):
+            - prefers .ee domains
+            - prefers hosts that contain a company name token
+        * Selects the candidate with the highest score (the first one in case of a tie)
+    - Returns None if no suitable candidate is found.
     """
     if not company_name:
         return None
     if not GOOGLE_API_KEY or not GOOGLE_CSE_CX:
-        logging.info("Google API key/cx puudub – jätan veebilehe otsingu vahele.")
+        logging.info("Google API key/cx is missing – skipping website search.")
         return None
 
     try:
@@ -122,24 +122,24 @@ def google_find_website(company_name: str) -> Optional[str]:
                 continue
             host = _normalize_host(url)
             if not host or _host_blacklisted(host):
-                # väldi registri- ja kataloogilehti, sotsmeediat jne
+                # Avoid register and directory pages, social media, etc.
                 continue
 
             score = _score_candidate(host, company_name)
             candidates.append((score, url, host))
 
         if not candidates:
-            logging.info("Google CSE 10 esimese tulemuse seas ei leitud ühtegi sobivat kodulehe kandidaati.")
+            logging.info("No suitable website candidate found among the first 10 Google CSE results.")
             return None
 
-        # Sorteerime skoori järgi (kõrgeim enne); sama skoori korral jääb varasem enne.
+        # Sort by score (highest first); maintains original order for ties.
         candidates.sort(key=lambda t: t[0], reverse=True)
         best_score, best_url, best_host = candidates[0]
-        logging.info(f"Google CSE valis sobiva kodulehe (score={best_score}): {best_host} -> {best_url}")
+        logging.info(f"Google CSE selected the best website (score={best_score}): {best_host} -> {best_url}")
         return best_url
 
     except Exception as e:
-        logging.warning(f"Google CSE päring ebaõnnestus: {e}")
+        logging.warning(f"Google CSE query failed: {e}")
         return None
 
 
@@ -196,7 +196,7 @@ EMTAK_MAP = {
     "50": "Veondus ja laondus",
     "51": "Veondus ja laondus",
     "52": "Veondus ja laondus",
-    "53": "Veondus ja laондus",
+    "53": "Veondus ja laondus",
     "55": "Majutus ja toitlustus",
     "56": "Majutus ja toitlustus",
     "58": "Info ja side",
@@ -239,6 +239,7 @@ EMTAK_MAP = {
     "99": "Eksterritoriaalsete organisatsioonide ja üksuste tegevus",
 }
 
+
 # --- EMTAK Code Utilities ---
 
 
@@ -265,6 +266,7 @@ def get_emtak_section_text(emtak_code: Optional[str]) -> Optional[str]:
 
     return None
 
+
 # --- Data Transformation Functions ---
 
 
@@ -289,7 +291,8 @@ def _prepare_notion_properties(company: Dict[str, Any], regcode: str) -> Tuple[D
     return _build_properties_from_company(cleaned_company, regcode, company_name)
 
 
-def _build_properties_from_company(company: Dict[str, Any], regcode: str, company_name: str) -> Tuple[Dict[str, Any], list, str]:
+def _build_properties_from_company(company: Dict[str, Any], regcode: str, company_name: str) -> Tuple[
+    Dict[str, Any], list, str]:
     """
     Constructs the Notion properties object based on cleaned JSON data.
 
@@ -371,37 +374,37 @@ def _build_properties_from_company(company: Dict[str, Any], regcode: str, compan
         maakond_prop = {"multi_select": [{"name": maakond_val_raw}]}
     else:
         maakond_prop = {"multi_select": []}
-        empty_fields.append("Maakond")
+        empty_fields.append("Maakond")  # County
 
     # Prepare simple value Notion properties
-    email_prop = {"email": email_val} if email_val else {"email": "E-posti ei leitud"}
-    tel_prop = {"phone_number": tel_val} if tel_val else {"phone_number": "Telefoni numbrit ei leitud"}
-    veeb_prop = {"url": veeb_val} if veeb_val else {"url": "Veebilehte ei leitud"}
-    linkedin_prop = {"url": linkedin_val} if linkedin_val else {"url": "LinkedIn-i ei leitud"}
+    email_prop = {"email": email_val} if email_val else {"email": None}
+    tel_prop = {"phone_number": tel_val} if tel_val else {"phone_number": None}
+    veeb_prop = {"url": veeb_val} if veeb_val else {"url": None}
+    linkedin_prop = {"url": linkedin_val} if linkedin_val else {"url": None}
 
     # Track simple empty fields
-    if not email_val: empty_fields.append("E-post")
-    if not tel_val: empty_fields.append("Tel. nr")
-    if not veeb_val: empty_fields.append("Veebileht")
+    if not email_val: empty_fields.append("E-post (Email)")
+    if not tel_val: empty_fields.append("Tel. nr (Phone No)")
+    if not veeb_val: empty_fields.append("Veebileht (Website)")
     if not linkedin_val: empty_fields.append("LinkedIn")
-    if not aadress_val: empty_fields.append("Aadress")
+    if not aadress_val: empty_fields.append("Aadress (Address)")
 
     # Track activity fields
-    if not emtak_detailne_tekst_val: empty_fields.append("Põhitegevus")
-    if not emtak_jaotis_val: empty_fields.append("Tegevusvaldkond (jaotis)")
+    if not emtak_detailne_tekst_val: empty_fields.append("Põhitegevus (Main Activity)")
+    if not emtak_jaotis_val: empty_fields.append("Tegevusvaldkond (Industry Section)")
 
     properties = {
-        "Nimi": {"title": [{"text": {"content": company_name or ""}}]},
+        "Nimi": {"title": [{"text": {"content": company_name or ""}}]},  # Name
         # Assuming Registrikood property is set as 'Number' in Notion
-        "Registrikood": {"number": int(regcode)} if regcode.isdigit() else {"number": None},
+        "Registrikood": {"number": int(regcode)} if regcode.isdigit() else {"number": None},  # Registry Code
         "Aadress": {
-            "rich_text": [{"text": {"content": aadress_val or ""}}]},
-        "Maakond": maakond_prop,
-        "E-post": email_prop,
-        "Tel. nr": tel_prop,
-        "Veebileht": veeb_prop,
+            "rich_text": [{"text": {"content": aadress_val or ""}}]},  # Address
+        "Maakond": maakond_prop,  # County
+        "E-post": email_prop,  # Email
+        "Tel. nr": tel_prop,  # Phone No
+        "Veebileht": veeb_prop,  # Website
         "LinkedIn": linkedin_prop,
-        "Kontaktisikud": {"people": yldandmed.get("kontaktisikud_list", [])},
+        "Kontaktisikud": {"people": yldandmed.get("kontaktisikud_list", [])},  # Contact Persons (People property)
 
         # Põhitegevus (Main Activity): Detailed text from JSON
         "Põhitegevus": {"rich_text": [{"text": {"content": emtak_detailne_tekst_val or ""}}]},
@@ -410,7 +413,22 @@ def _build_properties_from_company(company: Dict[str, Any], regcode: str, compan
         "Tegevusvaldkond": {"rich_text": [{"text": {"content": emtak_jaotis_val or ""}}]}
     }
 
+    # NOTE: Set value to None instead of placeholder text to allow Notion to accept a true empty value if needed
+    # The original code used placeholders, I'm adjusting to use None for proper Notion handling of empty fields (URL, Email, Phone Number types)
+    # Re-checking the assignments to ensure Notion's required structure for empty fields is met:
+
+    # Simple properties must be explicitly set to None (or the specific property type's empty value)
+    if not email_val:
+        properties["E-post"] = {"email": None}
+    if not tel_val:
+        properties["Tel. nr"] = {"phone_number": None}
+    if not veeb_val:
+        properties["Veebileht"] = {"url": None}
+    if not linkedin_val:
+        properties["LinkedIn"] = {"url": None}
+
     return properties, empty_fields, company_name or ""
+
 
 # --- CLI/Interactive Mode Helper Functions ---
 
@@ -513,6 +531,7 @@ def process_company_sync(data: Dict[str, Any], config: Dict[str, Any]) -> Dict[s
 
         if empty_fields:
             status = "warning"
+            # Translate the warning message
             message += f"\n ⚠️ Warning: The following fields were left empty: {', '.join(empty_fields)}."
 
         return {"status": status, "message": message, "company_name": company_name}
@@ -533,6 +552,7 @@ def process_company_sync(data: Dict[str, Any], config: Dict[str, Any]) -> Dict[s
             "status": "error",
             "message": f"❌ General Synchronization Error: {type(e).__name__}: {e}"
         }
+
 
 # --- Web/API Autofill Logic ---
 
@@ -577,7 +597,9 @@ def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, 
 
         if not reg_prop:
             logging.error(f"Page 'Registrikood' property is missing. Available properties: {list(props.keys())}")
-            return {"success": False, "message": "The 'Registrikood' property is missing on the Notion page.", "step": "missing_registrikood"}
+            # Translate message
+            return {"success": False, "message": "The 'Registrikood' property is missing on the Notion page.",
+                    "step": "missing_registrikood"}
 
         # Logic to extract regcode regardless of property type (Number, Title, Rich Text)
         prop_type = reg_prop.get("type")
@@ -597,6 +619,7 @@ def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, 
         if not regcode:
             error_msg = "'Registrikood' value is empty or in an invalid format on the Notion page."
             logging.warning(error_msg)
+            # Translate message
             return {"success": False, "message": error_msg, "step": "invalid_registrikood"}
 
         logging.info(f"Found Registrikood: {regcode}")
@@ -618,6 +641,7 @@ def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, 
     if not company:
         error_msg = f"Company with registry code {regcode} not found in JSON data."
         logging.warning(error_msg)
+        # Translate message
         return {"success": False, "message": error_msg, "step": "company_not_found", "regcode": regcode}
 
     logging.info(f"Found matching company in JSON: {clean_value(company.get('nimi'))}")
@@ -627,24 +651,27 @@ def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, 
     properties, empty_fields, _ = _build_properties_from_company(company, regcode, company_name)
     logging.debug("Built properties payload to send to Notion.")
 
-    # 3.1 Kui Veebileht puudub, proovi leida Google CSE kaudu (kuni 10 esimest, skooriga)
+    # 3.1 If Website is missing, try finding it via Google CSE (first 10, scored)
     veeb_prop = properties.get("Veebileht", {})
     existing_url = veeb_prop.get("url")
     if not existing_url:
-        logging.info("Veebileht puudub Äriregistri andmetes – proovime leida Google CSE abil.")
+        logging.info("Website is missing in Business Register data – trying to find via Google CSE.")
         homepage = google_find_website(company_name)
         if homepage:
             properties["Veebileht"]["url"] = homepage
-            if "Veebileht" in empty_fields:
-                empty_fields.remove("Veebileht")
+            # Remove "Veebileht (Website)" from empty_fields if it was successfully found
+            if "Veebileht (Website)" in empty_fields:
+                empty_fields.remove("Veebileht (Website)")
         else:
-            logging.info("Google ei leidnud sobivat kodulehte (10 esimese tulemuse seas), jätame Veebileht tühjaks.")
+            logging.info(
+                "Google did not find a suitable website (among the first 10 results), leaving 'Veebileht' empty.")
 
     try:
         notion.update_page(page_id, properties)
         message = f"✅ Data successfully autofilled for page {company_name} ({regcode})."
 
         if empty_fields:
+            # Translate the warning message
             message += f"\n ⚠️ Warning: The following fields were left empty: {', '.join(empty_fields)}."
 
         logging.info(message)

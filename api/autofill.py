@@ -16,7 +16,7 @@ AUTO_CLOSE_HTML = """
 <html><head><meta charset="utf-8"><title>Done</title></head>
 <body>
 <script>
-/* Püüame tabu sulgeda; kui brauser ei luba, proovime uuesti väikese viitega. */
+/* Attempt to close the tab; if the browser doesn't allow it, try again with a slight delay. */
 (function(){
   try { window.close(); } catch(e) {}
   setTimeout(function(){
@@ -27,23 +27,24 @@ AUTO_CLOSE_HTML = """
 </body></html>
 """
 
+
 # --- Notion Status Update Utility ---
 
 def update_autofill_status(page_id: str, status_text: str, config: Dict[str, Any]):
     """
-    Kirjutab Notioni lehe 'Auto-fill Status' (Rich text) välja.
-    Edu korral võid anda "" (tühjenda väli).
+    Writes to the 'Auto-fill Status' (Rich text) field of a Notion page.
+    On success, you can provide "" (to clear the field).
     """
     NOTION_API_KEY = config.get("notion", {}).get("token")
     NOTION_DATABASE_ID = config.get("notion", {}).get("database_id")
 
     if not all([NOTION_API_KEY, NOTION_DATABASE_ID]):
-        # kui konfi pole, ei saa seda viga notionisse kirjutada
+        # If config is missing, we cannot write this error to Notion
         return
-    
+
     notion = NotionClient(NOTION_API_KEY, NOTION_DATABASE_ID)
     try:
-        # lisa "type": "text" – Notioni ametlik struktuur
+        # Add "type": "text" – Notion's official structure
         notion.update_page(page_id, {
             "Auto-fill Status": {
                 "rich_text": [{
@@ -53,7 +54,7 @@ def update_autofill_status(page_id: str, status_text: str, config: Dict[str, Any
             }
         })
     except Exception as e:
-        # jätame vea logi minimaalseks; ei tohi peatada põhivoogu
+        # Keep error logging minimal; must not stop the main flow
         traceback.print_exc()
 
 
@@ -63,23 +64,23 @@ def update_autofill_status(page_id: str, status_text: str, config: Dict[str, Any
 def autofill():
     """
     Variant A:
-    - Käivitab autofilli
-    - Kirjutab 'Auto-fill Status' ("" edu korral; 'Error: ...' vea korral)
-    - Tagastab minimaalse HTML-i, mis SULGEB TABI automaatselt (ei hoia raporteid ekraanil)
+    - Triggers the autofill process.
+    - Writes 'Auto-fill Status' ("" on success; 'Error: ...' on failure).
+    - Returns a minimal HTML page that automatically CLOSES THE TAB (does not keep reports on screen).
     """
     page_id = None
 
-    # Konfi laadimine
+    # Load configuration
     config = load_config()
     NOTION_API_KEY = config.get("notion", {}).get("token")
     NOTION_DATABASE_ID = config.get("notion", {}).get("database_id")
     ARIREGISTER_JSON_URL = config.get("ariregister", {}).get("json_url")
 
-    # NB! Kui konfi pole, me ei saa Notioni uuendada — aga sulgeme tabu ikkagi
+    # NOTE! If config is missing, we cannot update Notion — but we still close the tab.
     config_ok = all([NOTION_API_KEY, NOTION_DATABASE_ID, ARIREGISTER_JSON_URL])
 
     try:
-        # pageId võib tulla GET query'st või POST body'st (või POST query'st)
+        # pageId can come from a GET query, POST body, or POST query
         if request.method == 'GET':
             page_id = request.args.get('pageId')
         else:
@@ -87,43 +88,41 @@ def autofill():
             page_id = data.get('pageId') or request.args.get('pageId')
 
         if not page_id:
-            # page_id puudub – midagi teha ei saa; sulgeme tabu.
+            # page_id is missing – cannot do anything; close the tab.
             return Response(AUTO_CLOSE_HTML, mimetype="text/html", status=200)
 
         if not config_ok:
-            # Ei ole vajalikku konfi – proovi vähemalt veateade Notioni kirjutada (kui üldse võimalik).
+            # Required config is missing – try to write an error message to Notion at least (if possible at all).
             try:
-                update_autofill_status(page_id, "Viga: puuduv konfiguratsioon", config)
+                update_autofill_status(page_id, "Error: Missing configuration (EST)", config)
             except Exception:
                 pass
             return Response(AUTO_CLOSE_HTML, mimetype="text/html", status=200)
 
-
-        # Käivita põhiloogika (sinu projektis defineeritud)
+        # Execute the main logic (defined in your project)
         result: Dict[str, Any] = autofill_page_by_page_id(page_id, config)
 
-        # Uuenda Status Notionis (EST)
+        # Update Status in Notion
         if result.get("success"):
-            update_autofill_status(page_id, "Edukalt uuendatud", config)
+            update_autofill_status(page_id, "Successfully updated (EST)", config)
         else:
-            msg = result.get("message") or "Tundmatu viga"
-            update_autofill_status(page_id, f"Viga: {msg[:200]}", config)
+            # Keep error message short for Notion
+            msg = result.get("message") or "Unknown error (EST)"
+            update_autofill_status(page_id, f"Error: {msg[:200]}", config)
 
-
-        # Igal juhul: auto-close
+        # In any case: auto-close
         return Response(AUTO_CLOSE_HTML, mimetype="text/html", status=200)
 
     except Exception as e:
         traceback.print_exc()
-        # Proovi kirjutada krit viga Notioni, kui page_id teada
+        # Try to write critical error to Notion, if page_id is known and config is ok
         if page_id and config_ok:
             try:
-                update_autofill_status(page_id, f"Viga: {type(e).__name__}: {e}", config)
+                update_autofill_status(page_id, f"Error: {type(e).__name__}: {e}", config)
             except Exception:
                 pass
-        # Ja sulgeme tabu niikuinii
+        # And close the tab anyway
         return Response(AUTO_CLOSE_HTML, mimetype="text/html", status=200)
-
 
 
 @app.route('/', methods=['GET'])

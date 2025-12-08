@@ -4,17 +4,19 @@ import requests
 class NotionClient:
     """Class for communicating with the Notion API."""
 
+    API_VERSION = "2022-06-28"
+
     def __init__(self, token: str, database_id: str):
         self.token = token
         self.database_id = database_id
         self.headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
-            "Notion-Version": "2022-06-28"
+            "Notion-Version": self.API_VERSION
         }
 
     def get_page(self, page_id: str):
-        """Tagastab konkreetse lehe andmed (koos properties metaandmetega)."""
+        """Returns data of a specific page."""
         url = f"https://api.notion.com/v1/pages/{page_id}"
         r = requests.get(url, headers=self.headers)
         r.raise_for_status()
