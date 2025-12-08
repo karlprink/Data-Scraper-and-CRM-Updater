@@ -23,7 +23,7 @@ jobs:
 
       - name: 2. Secrets Detection (Gitleaks)
         # Checks if any sensitive keys or secrets were accidentally committed
-        uses: gitleaks/gitleaks-action@v0.12.0
+        uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
