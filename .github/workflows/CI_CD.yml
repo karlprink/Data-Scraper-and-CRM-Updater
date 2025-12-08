@@ -20,6 +20,10 @@ jobs:
     steps:
       - name: 1. Checkout Code
         uses: actions/checkout@v4
+        with:
+          # REQUIRED: Set depth to 0 to ensure the full history is available
+          # Gitleaks needs the previous commit's parent to compare changes.
+          fetch-depth: 0
 
       - name: 2. Secrets Detection (Gitleaks)
         # Checks if any sensitive keys or secrets were accidentally committed
