@@ -113,7 +113,7 @@ def autofill():
 
         # Update Status in Notion
         if result.get("success"):
-            update_autofill_status(page_id, "Successfully updated (EST)", config)
+            update_autofill_status(page_id, "Edukalt uuendatud", config)
         else:
             # Keep error message short for Notion
             msg = result.get("message") or "Unknown error (EST)"

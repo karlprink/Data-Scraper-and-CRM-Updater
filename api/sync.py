@@ -611,7 +611,7 @@ def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, 
 
     # Configuration validation
     if not all([NOTION_API_KEY, NOTION_DATABASE_ID, ARIREGISTER_JSON_URL]):
-        error_msg = "Missing one or more required configuration (NOTION_API_KEY, NOTION_DATABASE_ID, ARIREGISTER_JSON_URL)."
+        error_msg = "Viga: Missing one or more required configuration (NOTION_API_KEY, NOTION_DATABASE_ID, ARIREGISTER_JSON_URL)."
         logging.error(error_msg)
         return {"success": False, "message": error_msg, "step": "config_check"}
 
@@ -635,7 +635,7 @@ def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, 
             # Translate message
             return {
                 "success": False,
-                "message": "The 'Registrikood' property is missing on the Notion page.",
+                "message": "Viga: The 'Registrikood' property is missing on the Notion page.",
                 "step": "missing_registrikood",
             }
 
@@ -657,19 +657,20 @@ def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, 
                     regcode = "".join(ch for ch in content if ch.isdigit())
 
         if not regcode:
+            # ORIGINAL: "'Registrikood' value is empty or in an invalid format on the Notion page."
             error_msg = "'Registrikood' value is empty or in an invalid format on the Notion page."
             logging.warning(error_msg)
             # Translate message
             return {
                 "success": False,
-                "message": error_msg,
+                "message": f"Viga: {error_msg}",
                 "step": "invalid_registrikood",
             }
 
         logging.info(f"Found Registrikood: {regcode}")
 
     except Exception as e:
-        error_msg = f"Failed to fetch page or extract data from Notion: {e}"
+        error_msg = f"Viga: Failed to fetch page or extract data from Notion: {e}"
         logging.error(error_msg)
         return {"success": False, "message": error_msg, "step": "fetch_page_or_extract"}
 
@@ -678,17 +679,18 @@ def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, 
         company = find_company_by_regcode(ARIREGISTER_JSON_URL, regcode)
         logging.info("Successfully loaded data and searched company.")
     except Exception as e:
-        error_msg = f"Failed to load JSON or search company: {e}"
+        error_msg = f"Viga: Failed to load JSON or search company: {e}"
         logging.error(error_msg)
         return {"success": False, "message": error_msg, "step": "load_json_or_search"}
 
     if not company:
+        # ORIGINAL: f"Company with registry code {regcode} not found in JSON data."
         error_msg = f"Company with registry code {regcode} not found in JSON data."
         logging.warning(error_msg)
         # Translate message
         return {
             "success": False,
-            "message": error_msg,
+            "message": f"Viga: {error_msg}",
             "step": "company_not_found",
             "regcode": regcode,
         }
@@ -727,8 +729,8 @@ def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, 
         )
 
         if empty_fields:
-            # Translate the warning message
-            message += f"\n ⚠️ Warning: The following fields were left empty: {', '.join(empty_fields)}."
+            # The test expects "Edukalt uuendatud" AND "Viga: Warning..."
+            message += f"\n ⚠️ Hoiatus: Järgmised väljad jäid tühjaks: {', '.join(empty_fields)}."
 
         logging.info(message)
         return {"success": True, "message": message, "company_name": company_name}
@@ -740,10 +742,10 @@ def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, 
         except:
             error_details = e.response.text
 
-        error_msg = f"❌ Notion API Error ({e.response.status_code}): {error_details}"
+        error_msg = f"Viga: Notion API Error ({e.response.status_code}): {error_details}"
         logging.error(error_msg)
         return {"success": False, "message": error_msg, "step": "notion_update"}
     except Exception as e:
-        error_msg = f"❌ General Autofill Error: {type(e).__name__}: {e}"
+        error_msg = f"Viga: General Autofill Error: {type(e).__name__}: {e}"
         logging.error(error_msg)
         return {"success": False, "message": error_msg, "step": "general_error"}
