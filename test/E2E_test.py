@@ -14,7 +14,7 @@ from test.mock_clients.mock_company_website_client import MockCompanyWebsiteClie
 from test.mock_clients.mock_google_client import MockGoogleClient
 from test.mock_clients.mock_notion_client import MockNotionClient
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
 def check_for_autoclose(response):
@@ -23,98 +23,128 @@ def check_for_autoclose(response):
     assert response.mimetype == "text/html"
 
 
-
 @pytest.fixture()
 def mock_env(monkeypatch):
-    monkeypatch.setenv('NOTION_API_KEY', 'test_key')
-    monkeypatch.setenv('NOTION_DATABASE_ID', 'test_db')
-    monkeypatch.setenv('ARIREGISTER_JSON_URL', 'test_url')
-    monkeypatch.setenv('GOOGLE_API_KEY', 'test_google_key')
-    monkeypatch.setenv("GOOGLE_CSE_CX", 'test_google_cse_cx')
+    monkeypatch.setenv("NOTION_API_KEY", "test_key")
+    monkeypatch.setenv("NOTION_DATABASE_ID", "test_db")
+    monkeypatch.setenv("ARIREGISTER_JSON_URL", "test_url")
+    monkeypatch.setenv("GOOGLE_API_KEY", "test_google_key")
+    monkeypatch.setenv("GOOGLE_CSE_CX", "test_google_cse_cx")
+
 
 @pytest.fixture()
 def mock_env_ariregister_fail(monkeypatch):
-    monkeypatch.setenv('NOTION_API_KEY', 'test_key')
-    monkeypatch.setenv('NOTION_DATABASE_ID', 'test_db')
-    monkeypatch.setenv('ARIREGISTER_JSON_URL', 'fail_url')
-    monkeypatch.setenv('GOOGLE_API_KEY', 'test_google_key')
-    monkeypatch.setenv("GOOGLE_CSE_CX", 'test_google_cse_cx')
+    monkeypatch.setenv("NOTION_API_KEY", "test_key")
+    monkeypatch.setenv("NOTION_DATABASE_ID", "test_db")
+    monkeypatch.setenv("ARIREGISTER_JSON_URL", "fail_url")
+    monkeypatch.setenv("GOOGLE_API_KEY", "test_google_key")
+    monkeypatch.setenv("GOOGLE_CSE_CX", "test_google_cse_cx")
+
 
 @pytest.fixture()
 def mock_cache_env(monkeypatch):
     monkeypatch.setattr(json_loader, "CACHE_DIR", "test/mock_cache")
-    monkeypatch.setattr(json_loader, "CACHE_FILE_PATH", "test/mock_cache/ariregister_data.zip")
-    monkeypatch.setattr(json_loader, "CACHE_EXPIRATION", timedelta(weeks=52*1000))
+    monkeypatch.setattr(
+        json_loader, "CACHE_FILE_PATH", "test/mock_cache/ariregister_data.zip"
+    )
+    monkeypatch.setattr(json_loader, "CACHE_EXPIRATION", timedelta(weeks=52 * 1000))
+
 
 @pytest.fixture()
 def mock_cache_env_expired(monkeypatch):
     monkeypatch.setattr(json_loader, "CACHE_DIR", "test/mock_cache/volatile")
-    monkeypatch.setattr(json_loader, "CACHE_FILE_PATH", "test/mock_cache/volatile/ariregister_data.zip")
+    monkeypatch.setattr(
+        json_loader, "CACHE_FILE_PATH", "test/mock_cache/volatile/ariregister_data.zip"
+    )
     monkeypatch.setattr(json_loader, "CACHE_EXPIRATION", timedelta(hours=0))
+
 
 @pytest.fixture()
 def mock_notion_client(monkeypatch):
     instances = []
+
     def constructor(token, database_id):
         instance = MockNotionClient(token, database_id)
         instances.append(instance)
         return instance
+
     constructor.instances = instances
     mock_notion_client = MagicMock(side_effect=constructor)
-    monkeypatch.setattr(autofill, 'NotionClient', mock_notion_client)
-    monkeypatch.setattr(sync, 'NotionClient', mock_notion_client)
+    monkeypatch.setattr(autofill, "NotionClient", mock_notion_client)
+    monkeypatch.setattr(sync, "NotionClient", mock_notion_client)
     return mock_notion_client
+
 
 @pytest.fixture()
 def mock_google_client(monkeypatch):
     instances = []
+
     def constructor(key, cx):
         instance = MockGoogleClient(key, cx)
         instances.append(instance)
         return instance
+
     constructor.instances = instances
     mock_google_client = MagicMock(side_effect=constructor)
-    monkeypatch.setattr(sync, 'GoogleClient', mock_google_client)
+    monkeypatch.setattr(sync, "GoogleClient", mock_google_client)
     return mock_google_client
+
 
 @pytest.fixture()
 def mock_company_website_client(monkeypatch):
     instances = []
+
     def constructor():
         instance = MockCompanyWebsiteClient()
         instances.append(instance)
         return instance
+
     constructor.instances = instances
     mock_company_website_client = MagicMock(side_effect=constructor)
-    monkeypatch.setattr(gemini, 'CompanyWebsiteClient', mock_company_website_client)
+    monkeypatch.setattr(gemini, "CompanyWebsiteClient", mock_company_website_client)
     return mock_company_website_client
+
 
 @pytest.fixture()
 def mock_ariregister_client(monkeypatch):
     instances = []
+
     def constructor():
         instance = MockAriregisterClient()
         instances.append(instance)
         return instance
+
     constructor.instances = instances
     mock_ariregister_client = MagicMock(side_effect=constructor)
     monkeypatch.setattr(csv_loader, "AriregisterClient", mock_ariregister_client)
-    monkeypatch.setattr(json_loader, 'AriregisterClient', mock_ariregister_client)
+    monkeypatch.setattr(json_loader, "AriregisterClient", mock_ariregister_client)
     return mock_ariregister_client
 
+
 @pytest.fixture()
-def mock_clients(mock_notion_client, mock_google_client, mock_company_website_client, mock_ariregister_client):
-    return [mock_notion_client, mock_google_client, mock_company_website_client, mock_ariregister_client]
+def mock_clients(
+    mock_notion_client,
+    mock_google_client,
+    mock_company_website_client,
+    mock_ariregister_client,
+):
+    return [
+        mock_notion_client,
+        mock_google_client,
+        mock_company_website_client,
+        mock_ariregister_client,
+    ]
+
 
 @pytest.fixture()
 def app():
     autofill.app.config.update({"TESTING": True})
     return autofill.app
 
+
 @pytest.fixture()
 def client(app):
     return app.test_client()
-
 
 
 class TestUC1:
@@ -126,7 +156,10 @@ class TestUC1:
     Preconditions:	        1. The collaboration manager is on a company page in Notion.
                             2. The Registrikood (Business Register Code) field on that page is filled.
     """
-    def test_uc1_main(self, monkeypatch, client, mock_env, mock_cache_env, mock_clients):
+
+    def test_uc1_main(
+        self, monkeypatch, client, mock_env, mock_cache_env, mock_clients
+    ):
         """
         Flow:   -> 1. Manager clicks "Auto-fill".
                 <- 2. System reads the Registrikood.
@@ -144,37 +177,67 @@ class TestUC1:
         google_client_instances = mock_clients[1].side_effect.instances
         company_website_client_instances = mock_clients[2].side_effect.instances
         ariregister_client_instances = mock_clients[3].side_effect.instances
-        assert len(notion_client_instances) == 2 #One at api.sync for reading 'Registrikood' and updating page contents; one at api.sync for updating the status field.
-        assert len(google_client_instances) == 1 #One at api.sync for updating 'Veebileht' field.
-        assert len(company_website_client_instances) == 0 #We are not looking for contacts, so company website should not be touched.
-        assert len(ariregister_client_instances) == 0 #We are using cached ariregister data, so ariregister should not be contacted.
+        assert (
+            len(notion_client_instances) == 2
+        )  # One at api.sync for reading 'Registrikood' and updating page contents; one at api.sync for updating the status field.
+        assert (
+            len(google_client_instances) == 1
+        )  # One at api.sync for updating 'Veebileht' field.
+        assert (
+            len(company_website_client_instances) == 0
+        )  # We are not looking for contacts, so company website should not be touched.
+        assert (
+            len(ariregister_client_instances) == 0
+        )  # We are using cached ariregister data, so ariregister should not be contacted.
 
-        #Check calls for all state-modifying functions in mocked client classes.
-        notion_client_instances[0].update_page_called.assert_called_once_with("UC1_main", {
-            'Aadress': {'rich_text': [{'text': {'content': 'Tartu maakond, Tartu linn, Tartu linn, Allika tn 4'}}]},
-            'E-post': {'email': 'info@ideelabor.ee'},
-            'Kontaktisikud': {'people': []},
-            'LinkedIn': {'url': None},
-            'Maakond': {'multi_select': [{'name': 'Tartu maakond'}]},
-            'Nimi': {'title': [{'text': {'content': 'OÜ Ideelabor'}}]},
-            'Põhitegevus': {'rich_text': [{'text': {'content': 'Programmeerimine'}}]},
-            'Registrikood': {'number': 11043099},
-            'Tegevusvaldkond': {'rich_text': [{'text': {'content': 'Info ja side'}}]},
-            'Tel. nr': {'phone_number': '+372 56208082'},
-            'Veebileht': {'url': 'https://ideelabor.ee'}})
+        # Check calls for all state-modifying functions in mocked client classes.
+        notion_client_instances[0].update_page_called.assert_called_once_with(
+            "UC1_main",
+            {
+                "Aadress": {
+                    "rich_text": [
+                        {
+                            "text": {
+                                "content": "Tartu maakond, Tartu linn, Tartu linn, Allika tn 4"
+                            }
+                        }
+                    ]
+                },
+                "E-post": {"email": "info@ideelabor.ee"},
+                "Kontaktisikud": {"people": []},
+                "LinkedIn": {"url": None},
+                "Maakond": {"multi_select": [{"name": "Tartu maakond"}]},
+                "Nimi": {"title": [{"text": {"content": "OÜ Ideelabor"}}]},
+                "Põhitegevus": {
+                    "rich_text": [{"text": {"content": "Programmeerimine"}}]
+                },
+                "Registrikood": {"number": 11043099},
+                "Tegevusvaldkond": {
+                    "rich_text": [{"text": {"content": "Info ja side"}}]
+                },
+                "Tel. nr": {"phone_number": "+372 56208082"},
+                "Veebileht": {"url": "https://ideelabor.ee"},
+            },
+        )
         notion_client_instances[0].create_page_called.assert_not_called()
-        notion_client_instances[1].update_page_called.assert_called_once_with("UC1_main", {
-            "Auto-fill Status": {
-                "rich_text": [{
-                    "type": "text",
-                    "text": {"content": "Edukalt uuendatud"[:1900]}
-                }]
-            }
-        })
+        notion_client_instances[1].update_page_called.assert_called_once_with(
+            "UC1_main",
+            {
+                "Auto-fill Status": {
+                    "rich_text": [
+                        {
+                            "type": "text",
+                            "text": {"content": "Edukalt uuendatud"[:1900]},
+                        }
+                    ]
+                }
+            },
+        )
         notion_client_instances[1].create_page_called.assert_not_called()
 
-
-    def test_uc1_alt1_missing(self, monkeypatch, client, mock_env, mock_cache_env, mock_clients):
+    def test_uc1_alt1_missing(
+        self, monkeypatch, client, mock_env, mock_cache_env, mock_clients
+    ):
         """
         **1a. Invalid or Missing Register Code **
         Flow    -> 1. The Registrikood field is empty or contains a code that does not exist in the CSV.
@@ -182,33 +245,52 @@ class TestUC1:
                 <- 3. The function stops. No fields are populated.
         Postcondition: No fields on the Notion page are changed. The page remains as it was.
         """
-        response = client.get("/api/autofill", query_string={"pageId": "UC1_alt1_missing"})
+        response = client.get(
+            "/api/autofill", query_string={"pageId": "UC1_alt1_missing"}
+        )
         check_for_autoclose(response)
         notion_client_instances = mock_clients[0].side_effect.instances
         google_client_instances = mock_clients[1].side_effect.instances
         company_website_client_instances = mock_clients[2].side_effect.instances
         ariregister_client_instances = mock_clients[3].side_effect.instances
-        assert len(notion_client_instances) == 2 #One at api.sync for reading 'Registrikood', one at api.sync for updating the status field.
-        assert len(google_client_instances) == 0 #We should not get to searching for a company website.
-        assert len(company_website_client_instances) == 0 #We are not looking for contacts, so company website should not be touched.
-        assert len(ariregister_client_instances) == 0 #We are using cached ariregister data, so ariregister should not be contacted.
+        assert (
+            len(notion_client_instances) == 2
+        )  # One at api.sync for reading 'Registrikood', one at api.sync for updating the status field.
+        assert (
+            len(google_client_instances) == 0
+        )  # We should not get to searching for a company website.
+        assert (
+            len(company_website_client_instances) == 0
+        )  # We are not looking for contacts, so company website should not be touched.
+        assert (
+            len(ariregister_client_instances) == 0
+        )  # We are using cached ariregister data, so ariregister should not be contacted.
 
         # Check calls for all state-modifying functions in mocked client classes.
         notion_client_instances[0].update_page_called.assert_not_called()
         notion_client_instances[0].create_page_called.assert_not_called()
-        notion_client_instances[1].update_page_called.assert_called_once_with("UC1_alt1_missing", {
-            "Auto-fill Status": {
-                "rich_text": [{
-                    "type": "text",
-                    "text": {
-                        "content": "Viga: 'Registrikood' value is empty or in an invalid format on the Notion page."[:1900]}
-                }]
-            }
-        })
+        notion_client_instances[1].update_page_called.assert_called_once_with(
+            "UC1_alt1_missing",
+            {
+                "Auto-fill Status": {
+                    "rich_text": [
+                        {
+                            "type": "text",
+                            "text": {
+                                "content": "Viga: 'Registrikood' value is empty or in an invalid format on the Notion page."[
+                                    :1900
+                                ]
+                            },
+                        }
+                    ]
+                }
+            },
+        )
         notion_client_instances[1].create_page_called.assert_not_called()
 
-
-    def test_uc1_alt1_invalid(self, monkeypatch, client, mock_env, mock_cache_env, mock_clients):
+    def test_uc1_alt1_invalid(
+        self, monkeypatch, client, mock_env, mock_cache_env, mock_clients
+    ):
         """
         **1a. Invalid or Missing Register Code **
         Flow    -> 1. The Registrikood field is empty or contains a code that does not exist in the CSV.
@@ -216,33 +298,52 @@ class TestUC1:
                 <- 3. The function stops. No fields are populated.
         Postcondition: No fields on the Notion page are changed. The page remains as it was.
         """
-        response = client.get("/api/autofill", query_string={"pageId": "UC1_alt1_invalid"})
+        response = client.get(
+            "/api/autofill", query_string={"pageId": "UC1_alt1_invalid"}
+        )
         check_for_autoclose(response)
         notion_client_instances = mock_clients[0].side_effect.instances
         google_client_instances = mock_clients[1].side_effect.instances
         company_website_client_instances = mock_clients[2].side_effect.instances
         ariregister_client_instances = mock_clients[3].side_effect.instances
-        assert len(notion_client_instances) == 2  #One at api.sync for reading 'Registrikood', one at api.sync for updating the status field.
-        assert len(google_client_instances) == 0  #We should not get to searching for a company website.
-        assert len(company_website_client_instances) == 0  #We are not looking for contacts, so company website should not be touched.
-        assert len(ariregister_client_instances) == 0  #We are using cached ariregister data, so ariregister should not be contacted.
+        assert (
+            len(notion_client_instances) == 2
+        )  # One at api.sync for reading 'Registrikood', one at api.sync for updating the status field.
+        assert (
+            len(google_client_instances) == 0
+        )  # We should not get to searching for a company website.
+        assert (
+            len(company_website_client_instances) == 0
+        )  # We are not looking for contacts, so company website should not be touched.
+        assert (
+            len(ariregister_client_instances) == 0
+        )  # We are using cached ariregister data, so ariregister should not be contacted.
 
         # Check calls for all state-modifying functions in mocked client classes.
         notion_client_instances[0].update_page_called.assert_not_called()
         notion_client_instances[0].create_page_called.assert_not_called()
-        notion_client_instances[1].update_page_called.assert_called_once_with("UC1_alt1_invalid", {
-            "Auto-fill Status": {
-                "rich_text": [{
-                    "type": "text",
-                    "text": {
-                        "content": 'Viga: Company with registry code 10 not found in JSON data.'[:1900]}
-                }]
-            }
-        })
+        notion_client_instances[1].update_page_called.assert_called_once_with(
+            "UC1_alt1_invalid",
+            {
+                "Auto-fill Status": {
+                    "rich_text": [
+                        {
+                            "type": "text",
+                            "text": {
+                                "content": "Viga: Company with registry code 10 not found in JSON data."[
+                                    :1900
+                                ]
+                            },
+                        }
+                    ]
+                }
+            },
+        )
         notion_client_instances[1].create_page_called.assert_not_called()
 
-
-    def test_uc1_alt2(self, monkeypatch, client, mock_env, mock_cache_env, mock_clients):
+    def test_uc1_alt2(
+        self, monkeypatch, client, mock_env, mock_cache_env, mock_clients
+    ):
         """
         **1b. Website Not Found **
         Flow:   -> 1. System successfully populates all data from the CSV (Main Flow steps 1-5).
@@ -256,40 +357,68 @@ class TestUC1:
         google_client_instances = mock_clients[1].side_effect.instances
         company_website_client_instances = mock_clients[2].side_effect.instances
         ariregister_client_instances = mock_clients[3].side_effect.instances
-        assert len(notion_client_instances) == 2  #One at api.sync for reading 'Registrikood' and updating page contents; one at api.sync for updating the status field.
-        assert len(google_client_instances) == 1  #One at api.sync for updating 'Veebileht' field (which fails).
-        assert len(company_website_client_instances) == 0  #We are not looking for contacts, so company website should not be touched.
-        assert len(ariregister_client_instances) == 0  #We are using cached ariregister data, so ariregister should not be contacted.
+        assert (
+            len(notion_client_instances) == 2
+        )  # One at api.sync for reading 'Registrikood' and updating page contents; one at api.sync for updating the status field.
+        assert (
+            len(google_client_instances) == 1
+        )  # One at api.sync for updating 'Veebileht' field (which fails).
+        assert (
+            len(company_website_client_instances) == 0
+        )  # We are not looking for contacts, so company website should not be touched.
+        assert (
+            len(ariregister_client_instances) == 0
+        )  # We are using cached ariregister data, so ariregister should not be contacted.
 
-        notion_client_instances[0].update_page_called.assert_called_once_with("UC1_alt2", {
-            'Nimi': {'title': [{'text': {'content': 'Flowerflake OÜ'}}]},
-            'Registrikood': {'number': 17281782},
-            'Aadress': {'rich_text': [{'text': {'content': 'Harju maakond, Rae vald, Järveküla, Ida põik 1'}}]},
-            'Maakond': {'multi_select': [{'name': 'Harju maakond'}]},
-            'E-post': {'email': 'smaragda.sarana@gmail.com'},
-            'Tel. nr': {'phone_number': None},
-            'Veebileht': {'url': None},
-            'LinkedIn': {'url': None},
-            'Kontaktisikud': {'people': []},
-            'Põhitegevus': {'rich_text': [{'text': {'content': 'Programmeerimine'}}]},
-            'Tegevusvaldkond': {'rich_text': [{'text': {'content': 'Info ja side'}}]}
-        })
+        notion_client_instances[0].update_page_called.assert_called_once_with(
+            "UC1_alt2",
+            {
+                "Nimi": {"title": [{"text": {"content": "Flowerflake OÜ"}}]},
+                "Registrikood": {"number": 17281782},
+                "Aadress": {
+                    "rich_text": [
+                        {
+                            "text": {
+                                "content": "Harju maakond, Rae vald, Järveküla, Ida põik 1"
+                            }
+                        }
+                    ]
+                },
+                "Maakond": {"multi_select": [{"name": "Harju maakond"}]},
+                "E-post": {"email": "smaragda.sarana@gmail.com"},
+                "Tel. nr": {"phone_number": None},
+                "Veebileht": {"url": None},
+                "LinkedIn": {"url": None},
+                "Kontaktisikud": {"people": []},
+                "Põhitegevus": {
+                    "rich_text": [{"text": {"content": "Programmeerimine"}}]
+                },
+                "Tegevusvaldkond": {
+                    "rich_text": [{"text": {"content": "Info ja side"}}]
+                },
+            },
+        )
         notion_client_instances[0].create_page_called.assert_not_called()
-        notion_client_instances[1].update_page_called.assert_called_once_with("UC1_alt2", {
-            "Auto-fill Status": {
-                "rich_text": [{
-                    "type": "text",
-                    "text": {"content": "Edukalt uuendatud"[:1900]}
-                }]
-            }
-        })
+        notion_client_instances[1].update_page_called.assert_called_once_with(
+            "UC1_alt2",
+            {
+                "Auto-fill Status": {
+                    "rich_text": [
+                        {
+                            "type": "text",
+                            "text": {"content": "Edukalt uuendatud"[:1900]},
+                        }
+                    ]
+                }
+            },
+        )
         notion_client_instances[1].create_page_called.assert_not_called()
 
     # E2E tests for alternate flow c are not feasible, as we do not run our tests in vercel.
 
 
-#class TestUC2:
-    #TODO: implement tests
+# class TestUC2:
+# TODO: implement tests
 
 
 class TestUC3:
@@ -302,7 +431,10 @@ class TestUC3:
                             2. The manager may have manually added data to other fields.
                             3. The Registrikood field is still correct.
     """
-    def test_uc3_main(self, monkeypatch, client, mock_env, mock_cache_env, mock_clients):
+
+    def test_uc3_main(
+        self, monkeypatch, client, mock_env, mock_cache_env, mock_clients
+    ):
         """
         Flow:   -> 1. Manager clicks "Auto-fill" (for a second time).
                 <- 2. System reads the Registrikood.
@@ -319,36 +451,64 @@ class TestUC3:
         google_client_instances = mock_clients[1].side_effect.instances
         company_website_client_instances = mock_clients[2].side_effect.instances
         ariregister_client_instances = mock_clients[3].side_effect.instances
-        assert len(notion_client_instances) == 2  # One at api.sync for reading 'Registrikood' and updating page contents; one at api.sync for updating the status field.
-        assert len(google_client_instances) == 0  # Google search logic should not be rerun as the entry already has a website listed.
-        assert len(company_website_client_instances) == 0  # We are not looking for contacts, so company website should not be touched.
-        assert len(ariregister_client_instances) == 0  # We are using cached ariregister data, so ariregister should not be contacted.
+        assert (
+            len(notion_client_instances) == 2
+        )  # One at api.sync for reading 'Registrikood' and updating page contents; one at api.sync for updating the status field.
+        assert (
+            len(google_client_instances) == 0
+        )  # Google search logic should not be rerun as the entry already has a website listed.
+        assert (
+            len(company_website_client_instances) == 0
+        )  # We are not looking for contacts, so company website should not be touched.
+        assert (
+            len(ariregister_client_instances) == 0
+        )  # We are using cached ariregister data, so ariregister should not be contacted.
 
-        notion_client_instances[0].update_page_called.assert_called_with({
-            'Aadress': {'rich_text': [{'text': {'content': 'Tartu maakond, Tartu linn, Tartu linn, Allika tn 4'}}]},
-            'E-post': {'email': 'info@ideelabor.ee'},
-            'Kontaktisikud': {'people': ['TestPerson']},
-            'LinkedIn': {'url': 'TestSite'},
-            'Maakond': {'multi_select': [{'name': 'Tartu maakond'}]},
-            'Nimi': {'title': [{'text': {'content': 'OÜ Ideelabor'}}]},
-            'Põhitegevus': {'rich_text': [{'text': {'content': 'Programmeerimine'}}]},
-            'Registrikood': {'number': 11043099},
-            'Tegevusvaldkond': {'rich_text': [{'text': {'content': 'Info ja side'}}]},
-            'Tel. nr': {'phone_number': '+372 56208082'},
-            'Veebileht': {'url': 'https://ideelabor.ee'}})
-        notion_client_instances[0].create_page_called.assert_not_called()
-        notion_client_instances[1].update_page_called.assert_called_once_with({
-            "Auto-fill Status": {
-                "rich_text": [{
-                    "type": "text",
-                    "text": {"content": "Edukalt uuendatud"[:1900]}
-                }]
+        notion_client_instances[0].update_page_called.assert_called_with(
+            {
+                "Aadress": {
+                    "rich_text": [
+                        {
+                            "text": {
+                                "content": "Tartu maakond, Tartu linn, Tartu linn, Allika tn 4"
+                            }
+                        }
+                    ]
+                },
+                "E-post": {"email": "info@ideelabor.ee"},
+                "Kontaktisikud": {"people": ["TestPerson"]},
+                "LinkedIn": {"url": "TestSite"},
+                "Maakond": {"multi_select": [{"name": "Tartu maakond"}]},
+                "Nimi": {"title": [{"text": {"content": "OÜ Ideelabor"}}]},
+                "Põhitegevus": {
+                    "rich_text": [{"text": {"content": "Programmeerimine"}}]
+                },
+                "Registrikood": {"number": 11043099},
+                "Tegevusvaldkond": {
+                    "rich_text": [{"text": {"content": "Info ja side"}}]
+                },
+                "Tel. nr": {"phone_number": "+372 56208082"},
+                "Veebileht": {"url": "https://ideelabor.ee"},
             }
-        })
+        )
+        notion_client_instances[0].create_page_called.assert_not_called()
+        notion_client_instances[1].update_page_called.assert_called_once_with(
+            {
+                "Auto-fill Status": {
+                    "rich_text": [
+                        {
+                            "type": "text",
+                            "text": {"content": "Edukalt uuendatud"[:1900]},
+                        }
+                    ]
+                }
+            }
+        )
         notion_client_instances[1].create_page_called.assert_not_called()
 
-
-    def test_uc3_alt1(self, monkeypatch, client, mock_env, mock_cache_env, mock_clients):
+    def test_uc3_alt1(
+        self, monkeypatch, client, mock_env, mock_cache_env, mock_clients
+    ):
         """
         3a. Company No Longer in Register
         Flow:   -> 1. Manager clicks "Auto-fill".
@@ -363,27 +523,43 @@ class TestUC3:
         google_client_instances = mock_clients[1].side_effect.instances
         company_website_client_instances = mock_clients[2].side_effect.instances
         ariregister_client_instances = mock_clients[3].side_effect.instances
-        assert len(notion_client_instances) == 2  # One at api.sync for reading 'Registrikood' and one at api.sync for updating the status field.
-        assert len(google_client_instances) == 0  # Google search logic should not be run.
-        assert len(company_website_client_instances) == 0  # We are not looking for contacts, so company website should not be touched.
-        assert len(ariregister_client_instances) == 0  # We are using cached ariregister data, so ariregister should not be contacted.
+        assert (
+            len(notion_client_instances) == 2
+        )  # One at api.sync for reading 'Registrikood' and one at api.sync for updating the status field.
+        assert (
+            len(google_client_instances) == 0
+        )  # Google search logic should not be run.
+        assert (
+            len(company_website_client_instances) == 0
+        )  # We are not looking for contacts, so company website should not be touched.
+        assert (
+            len(ariregister_client_instances) == 0
+        )  # We are using cached ariregister data, so ariregister should not be contacted.
 
         notion_client_instances[0].update_page_called.assert_not_called()
         notion_client_instances[0].create_page_called.assert_not_called()
-        notion_client_instances[1].update_page_called.assert_called_once_with("UC3_alt1", {
-            "Auto-fill Status": {
-                "rich_text": [{
-                    "type": "text",
-                    "text": {
-                        "content": 'Viga: Company with registry code 99 not found in JSON data.'[:1900]}
-                }]
-            }
-        })
+        notion_client_instances[1].update_page_called.assert_called_once_with(
+            "UC3_alt1",
+            {
+                "Auto-fill Status": {
+                    "rich_text": [
+                        {
+                            "type": "text",
+                            "text": {
+                                "content": "Viga: Company with registry code 99 not found in JSON data."[
+                                    :1900
+                                ]
+                            },
+                        }
+                    ]
+                }
+            },
+        )
         notion_client_instances[1].create_page_called.assert_not_called()
 
 
-#class TestUC4:
-    # TODO: implement tests
+# class TestUC4:
+# TODO: implement tests
 
 
 class TestUC5:
@@ -394,7 +570,10 @@ class TestUC5:
     Trigger:	            User clicks "Auto-fill" or manually requests a data refresh.
     Preconditions:	        The external Estonian Business Register URL is accessible.
     """
-    def test_uc5_main(self, monkeypatch, client, mock_env, mock_cache_env_expired, mock_clients):
+
+    def test_uc5_main(
+        self, monkeypatch, client, mock_env, mock_cache_env_expired, mock_clients
+    ):
         """
         Flow:   -> 1. System receives a request to access company data.
                 <- 2. System checks the local storage/cache for the ariregister_data.csv file.
@@ -412,36 +591,76 @@ class TestUC5:
         google_client_instances = mock_clients[1].side_effect.instances
         company_website_client_instances = mock_clients[2].side_effect.instances
         ariregister_client_instances = mock_clients[3].side_effect.instances
-        assert len(notion_client_instances) == 2  # One at api.sync for reading 'Registrikood' and one at api.sync for updating the status field.
-        assert len(google_client_instances) == 1  # One at api.sync for updating 'Veebileht' field.
-        assert len(company_website_client_instances) == 0  # We are not looking for contacts, so company website should not be touched.
-        assert len(ariregister_client_instances) == 1  # We are NOT using cached ariregister data, so ariregister should be contacted.
+        assert (
+            len(notion_client_instances) == 2
+        )  # One at api.sync for reading 'Registrikood' and one at api.sync for updating the status field.
+        assert (
+            len(google_client_instances) == 1
+        )  # One at api.sync for updating 'Veebileht' field.
+        assert (
+            len(company_website_client_instances) == 0
+        )  # We are not looking for contacts, so company website should not be touched.
+        assert (
+            len(ariregister_client_instances) == 1
+        )  # We are NOT using cached ariregister data, so ariregister should be contacted.
 
-        notion_client_instances[0].update_page_called.assert_called_once_with('UC5_main', {
-            'Nimi': {'title': [{'text': {'content': 'Accelerator OÜ'}}]},
-            'Registrikood': {'number': 16359677},
-            'Aadress': {'rich_text': [{'text': {'content': 'Harju maakond, Harku vald, Tiskre küla, Taverni tee 2/2-23'}}]},
-            'Maakond': {'multi_select': [{'name': 'Harju maakond'}]},
-            'E-post': {'email': 'konstantin.sadekov@gmail.com'},
-            'Tel. nr': {'phone_number': None},
-            'Veebileht': {'url': None},
-            'LinkedIn': {'url': None},
-            'Kontaktisikud': {'people': []},
-            'Põhitegevus': {'rich_text': [{'text': {'content': 'Kogu muu mujal liigitamata kutse-, teadus- ja tehnikaalane tegevus'}}]},
-            'Tegevusvaldkond': {'rich_text': [{'text': {'content': 'Kutse-, teadus- ja tehnikaalane tegevus'}}]}
-        })
+        notion_client_instances[0].update_page_called.assert_called_once_with(
+            "UC5_main",
+            {
+                "Nimi": {"title": [{"text": {"content": "Accelerator OÜ"}}]},
+                "Registrikood": {"number": 16359677},
+                "Aadress": {
+                    "rich_text": [
+                        {
+                            "text": {
+                                "content": "Harju maakond, Harku vald, Tiskre küla, Taverni tee 2/2-23"
+                            }
+                        }
+                    ]
+                },
+                "Maakond": {"multi_select": [{"name": "Harju maakond"}]},
+                "E-post": {"email": "konstantin.sadekov@gmail.com"},
+                "Tel. nr": {"phone_number": None},
+                "Veebileht": {"url": None},
+                "LinkedIn": {"url": None},
+                "Kontaktisikud": {"people": []},
+                "Põhitegevus": {
+                    "rich_text": [
+                        {
+                            "text": {
+                                "content": "Kogu muu mujal liigitamata kutse-, teadus- ja tehnikaalane tegevus"
+                            }
+                        }
+                    ]
+                },
+                "Tegevusvaldkond": {
+                    "rich_text": [
+                        {"text": {"content": "Kutse-, teadus- ja tehnikaalane tegevus"}}
+                    ]
+                },
+            },
+        )
         notion_client_instances[0].create_page_called.assert_not_called()
-        notion_client_instances[1].update_page_called.assert_called_once_with('UC5_main', {
-            'Auto-fill Status': {
-                'rich_text': [{'type': 'text',
-                               'text':
-                                   {'content': 'Edukalt uuendatud'}
-                               }]
-            }
-        })
+        notion_client_instances[1].update_page_called.assert_called_once_with(
+            "UC5_main",
+            {
+                "Auto-fill Status": {
+                    "rich_text": [
+                        {"type": "text", "text": {"content": "Edukalt uuendatud"}}
+                    ]
+                }
+            },
+        )
         notion_client_instances[1].create_page_called.assert_not_called()
 
-    def test_uc5_alt1(self, monkeypatch, client, mock_env_ariregister_fail, mock_cache_env_expired, mock_clients):
+    def test_uc5_alt1(
+        self,
+        monkeypatch,
+        client,
+        mock_env_ariregister_fail,
+        mock_cache_env_expired,
+        mock_clients,
+    ):
         """
         5a. Download Failed
         Flow:   -> 1. Cache is expired (older than 24h).
@@ -454,36 +673,67 @@ class TestUC5:
         google_client_instances = mock_clients[1].side_effect.instances
         company_website_client_instances = mock_clients[2].side_effect.instances
         ariregister_client_instances = mock_clients[3].side_effect.instances
-        assert len(notion_client_instances) == 2  # One at api.sync for reading 'Registrikood' and updating page contents; one at api.sync for updating the status field.
-        assert len(google_client_instances) == 1  # One at api.sync for updating 'Veebileht' field.
-        assert len(company_website_client_instances) == 0  # We are not looking for contacts, so company website should not be touched.
-        assert len(ariregister_client_instances) == 1  # We are NOT using cached ariregister data, so ariregister should be contacted.
+        assert (
+            len(notion_client_instances) == 2
+        )  # One at api.sync for reading 'Registrikood' and updating page contents; one at api.sync for updating the status field.
+        assert (
+            len(google_client_instances) == 1
+        )  # One at api.sync for updating 'Veebileht' field.
+        assert (
+            len(company_website_client_instances) == 0
+        )  # We are not looking for contacts, so company website should not be touched.
+        assert (
+            len(ariregister_client_instances) == 1
+        )  # We are NOT using cached ariregister data, so ariregister should be contacted.
 
-        notion_client_instances[0].update_page_called.assert_called_once_with('UC5_main', {
-            'Nimi': {'title': [{'text': {'content': 'Accelerator OÜ'}}]},
-            'Registrikood': {'number': 16359677},
-            'Aadress': {
-                'rich_text': [{'text': {'content': 'Harju maakond, Harku vald, Tiskre küla, Taverni tee 2/2-23'}}]},
-            'Maakond': {'multi_select': [{'name': 'Harju maakond'}]},
-            'E-post': {'email': 'konstantin.sadekov@gmail.com'},
-            'Tel. nr': {'phone_number': None},
-            'Veebileht': {'url': None},
-            'LinkedIn': {'url': None},
-            'Kontaktisikud': {'people': []},
-            'Põhitegevus': {'rich_text': [
-                {'text': {'content': 'Kogu muu mujal liigitamata kutse-, teadus- ja tehnikaalane tegevus'}}]},
-            'Tegevusvaldkond': {'rich_text': [{'text': {'content': 'Kutse-, teadus- ja tehnikaalane tegevus'}}]}
-        })
+        notion_client_instances[0].update_page_called.assert_called_once_with(
+            "UC5_main",
+            {
+                "Nimi": {"title": [{"text": {"content": "Accelerator OÜ"}}]},
+                "Registrikood": {"number": 16359677},
+                "Aadress": {
+                    "rich_text": [
+                        {
+                            "text": {
+                                "content": "Harju maakond, Harku vald, Tiskre küla, Taverni tee 2/2-23"
+                            }
+                        }
+                    ]
+                },
+                "Maakond": {"multi_select": [{"name": "Harju maakond"}]},
+                "E-post": {"email": "konstantin.sadekov@gmail.com"},
+                "Tel. nr": {"phone_number": None},
+                "Veebileht": {"url": None},
+                "LinkedIn": {"url": None},
+                "Kontaktisikud": {"people": []},
+                "Põhitegevus": {
+                    "rich_text": [
+                        {
+                            "text": {
+                                "content": "Kogu muu mujal liigitamata kutse-, teadus- ja tehnikaalane tegevus"
+                            }
+                        }
+                    ]
+                },
+                "Tegevusvaldkond": {
+                    "rich_text": [
+                        {"text": {"content": "Kutse-, teadus- ja tehnikaalane tegevus"}}
+                    ]
+                },
+            },
+        )
         notion_client_instances[0].create_page_called.assert_not_called()
-        notion_client_instances[1].update_page_called.assert_called_once_with('UC5_main', {
-            'Auto-fill Status': {
-                'rich_text': [{'type': 'text',
-                               'text':
-                                   {'content': 'Edukalt uuendatud'}
-                               }]
-            }
-        })
+        notion_client_instances[1].update_page_called.assert_called_once_with(
+            "UC5_main",
+            {
+                "Auto-fill Status": {
+                    "rich_text": [
+                        {"type": "text", "text": {"content": "Edukalt uuendatud"}}
+                    ]
+                }
+            },
+        )
         notion_client_instances[1].create_page_called.assert_not_called()
 
 
-#TODO: UC6 is yet to be implemented
+# TODO: UC6 is yet to be implemented
