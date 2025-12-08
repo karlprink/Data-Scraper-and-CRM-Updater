@@ -1,22 +1,26 @@
 import os
 import google.generativeai as genai
-from dotenv import load_dotenv
+import json
 import requests
+from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse  # Required for fixing links
-import json
+from .config import load_config
+
 
 from .clients.company_website_client import CompanyWebsiteClient
 
 # Load .env file variables
 load_dotenv()
 
+config = load_config()
+AI_MODEL = config['google']['ai_model']
 # Configure the client
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 try:
     # Initialize the Gemini model
-    model = genai.GenerativeModel('gemini-2.5-flash-lite')
+    model = genai.GenerativeModel(AI_MODEL)
 except Exception as e:
     print(f"Error initializing the model: {e}")
     exit()

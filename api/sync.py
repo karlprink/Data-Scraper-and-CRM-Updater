@@ -377,10 +377,10 @@ def _build_properties_from_company(company: Dict[str, Any], regcode: str, compan
         empty_fields.append("Maakond")  # County
 
     # Prepare simple value Notion properties
-    email_prop = {"email": email_val} if email_val else {"email": None}
-    tel_prop = {"phone_number": tel_val} if tel_val else {"phone_number": None}
-    veeb_prop = {"url": veeb_val} if veeb_val else {"url": None}
-    linkedin_prop = {"url": linkedin_val} if linkedin_val else {"url": None}
+    email_prop = {"email": email_val} if email_val else {"email": "E-maili ei leitud."}
+    tel_prop = {"phone_number": tel_val} if tel_val else {"phone_number": "Telefoni numbrit ei leitud."}
+    veeb_prop = {"url": veeb_val} if veeb_val else {"url": "Veebilehte ei leitud."}
+    linkedin_prop = {"url": linkedin_val} if linkedin_val else {"url": "LinkedIn-i ei leitud."}
 
     # Track simple empty fields
     if not email_val: empty_fields.append("E-post (Email)")
@@ -503,7 +503,8 @@ def process_company_sync(data: Dict[str, Any], config: Dict[str, Any]) -> Dict[s
 
     notion = NotionClient(
         config["notion"]["token"],
-        config["notion"]["database_id"]
+        config["notion"]["database_id"],
+        config["notion"]["api_version"]
     )
 
     # Compose full payload for creation
