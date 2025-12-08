@@ -79,7 +79,6 @@ jobs:
       - name: 5. Run Pytest Tests
         env:
           GOOGLE_AI_MODEL: "gemini-2.5-flash"
-          GOOGLE_API_KEY: "AIzaSyAzB4rD0pNGizFD9vxKnNRVqXtZ5VKzKUg"
         run: pytest
 
   # 3. Job: Deployment
