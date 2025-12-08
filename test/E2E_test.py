@@ -277,7 +277,7 @@ class TestUC1:
                         {
                             "type": "text",
                             "text": {
-                                "content": "Viga: 'Registrikood' value is empty or in an invalid format on the Notion page."[
+                                "content": "Error: Viga: 'Registrikood' value is empty or in an invalid format on the Notion page."[
                                     :1900
                                 ]
                             },
@@ -330,7 +330,7 @@ class TestUC1:
                         {
                             "type": "text",
                             "text": {
-                                "content": "Viga: Company with registry code 10 not found in JSON data."[
+                                "content": "Error: Viga: Company with registry code 10 not found in JSON data."[
                                     :1900
                                 ]
                             },
@@ -546,7 +546,7 @@ class TestUC3:
                         {
                             "type": "text",
                             "text": {
-                                "content": "Viga: Company with registry code 99 not found in JSON data."[
+                                "content": "Error: Viga: Company with registry code 99 not found in JSON data."[
                                     :1900
                                 ]
                             },
