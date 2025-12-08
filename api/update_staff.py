@@ -45,6 +45,8 @@ def update_staff():
         # Validate configuration
         try:
             api_key, database_id = validate_config()
+            config = load_config()
+            api_version = config.get("notion", {}).get("api_version")
         except ValueError as e:
             config = load_config()
             return render_error_response(
@@ -89,7 +91,7 @@ def update_staff():
             )
         
         # Initialize Notion client
-        notion = NotionClient(api_key, database_id)
+        notion = NotionClient(api_key, database_id, api_version)
         
         # Get database properties for type checking
         page_properties = get_database_properties(notion)
