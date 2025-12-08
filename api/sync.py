@@ -742,7 +742,9 @@ def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, 
         except:
             error_details = e.response.text
 
-        error_msg = f"Viga: Notion API Error ({e.response.status_code}): {error_details}"
+        error_msg = (
+            f"Viga: Notion API Error ({e.response.status_code}): {error_details}"
+        )
         logging.error(error_msg)
         return {"success": False, "message": error_msg, "step": "notion_update"}
     except Exception as e:
