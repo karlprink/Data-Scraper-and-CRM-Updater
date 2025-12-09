@@ -38,12 +38,13 @@ def update_autofill_status(page_id: str, status_text: str, config: Dict[str, Any
     """
     NOTION_API_KEY = config.get("notion", {}).get("token")
     NOTION_DATABASE_ID = config.get("notion", {}).get("database_id")
+    NOTION_API_VERSION = config.get("notion", {}).get("api_version")
 
     if not all([NOTION_API_KEY, NOTION_DATABASE_ID]):
         # If config is missing, we cannot write this error to Notion
         return
 
-    notion = NotionClient(NOTION_API_KEY, NOTION_DATABASE_ID)
+    notion = NotionClient(NOTION_API_KEY, NOTION_DATABASE_ID, NOTION_API_VERSION)
     try:
         # Add "type": "text" – Notion's official structure
         notion.update_page(
