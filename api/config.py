@@ -19,7 +19,6 @@ def load_config() -> Dict[str, Any]:
     google_api_key = os.getenv("GOOGLE_API_KEY")
     google_cse_cx = os.getenv("GOOGLE_CSE_CX")
 
-
     return {
         "notion": {
             "token": notion_token,

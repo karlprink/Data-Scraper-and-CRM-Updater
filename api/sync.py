@@ -172,7 +172,11 @@ EMTAK_RANGES = [
     (86, 88, "Tervishoid ja sotsiaalhoolekanne"),
     (90, 93, "Kunst, meelelahutus ja vaba aeg"),
     (94, 96, "Muud teenindavad tegevused"),
-    (97, 98, "Kodumajapidamiste kui tööandjate tegevus; kodumajapidamiste oma tarbeks tootmine"),
+    (
+        97,
+        98,
+        "Kodumajapidamiste kui tööandjate tegevus; kodumajapidamiste oma tarbeks tootmine",
+    ),
     (99, 99, "Eksterritoriaalsete organisatsioonide ja üksuste tegevus"),
 ]
 
@@ -199,7 +203,9 @@ def get_emtak_section_text(emtak_code: Optional[str]) -> Optional[str]:
 
             for start, end, name in EMTAK_RANGES:
                 if start <= code_int <= end:
-                    range_str = f"{start:02d}-{end:02d}" if start != end else f"{start:02d}"
+                    range_str = (
+                        f"{start:02d}-{end:02d}" if start != end else f"{start:02d}"
+                    )
 
                     safe_name = name.replace(",", ";")
 
@@ -209,6 +215,8 @@ def get_emtak_section_text(emtak_code: Optional[str]) -> Optional[str]:
             return None
 
     return None
+
+
 # --- Data Transformation Functions ---
 
 
@@ -359,9 +367,7 @@ def _build_properties_from_company(
 
     tegevusvaldkond_prop = {"multi_select": []}
     if emtak_jaotis_val:
-        tegevusvaldkond_prop = {
-            "multi_select": [{"name": emtak_jaotis_val}]
-        }
+        tegevusvaldkond_prop = {"multi_select": [{"name": emtak_jaotis_val}]}
 
     properties = {
         "Nimi": {"title": [{"text": {"content": company_name or ""}}]},
@@ -374,15 +380,12 @@ def _build_properties_from_company(
         "Tel. nr": tel_prop,
         "Veebileht": veeb_prop,
         "LinkedIn": linkedin_prop,
-        "Kontaktisikud": {
-            "people": yldandmed.get("kontaktisikud_list", [])
-        },
+        "Kontaktisikud": {"people": yldandmed.get("kontaktisikud_list", [])},
         "Põhitegevus": {
             "rich_text": [{"text": {"content": emtak_detailne_tekst_val or ""}}]
         },
         "Tegevusvaldkond": tegevusvaldkond_prop,
     }
-
 
     # NOTE: Set value to None instead of placeholder text to allow Notion to accept a true empty value if needed
     # The original code used placeholders, I'm adjusting to use None for proper Notion handling of empty fields (URL, Email, Phone Number types)
