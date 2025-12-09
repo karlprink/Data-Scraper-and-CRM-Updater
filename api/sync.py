@@ -148,100 +148,33 @@ def google_find_website(company_name: str) -> Optional[str]:
 
 
 # --------------------------------------------------------------------
-# --- EMTAK (Estonian Classification of Economic Activities) Mapping ---
-# Maps the 2-digit EMTAK code to its broader section/industry category (Tegevusvaldkond).
+# --- EMTAK (Estonian Classification of Economic Activities) Ranges ---
+# Define ranges as tuples: (start_code_int, end_code_int, "Section Name")
 # --------------------------------------------------------------------
 
-EMTAK_MAP = {
-    "01": "Põllumajandus, metsamajandus ja kalapüük",
-    "02": "Põllumajandus, metsamajandus ja kalapüük",
-    "03": "Põllumajandus, metsamajandus ja kalapüük",
-    "05": "Mäetööstus",
-    "06": "Mäetööstus",
-    "07": "Mäetööstus",
-    "08": "Mäetööstus",
-    "09": "Mäetööstus",
-    "10": "Töötlev tööstus",
-    "11": "Töötlev tööstus",
-    "12": "Töötlev tööstus",
-    "13": "Töötlev tööstus",
-    "14": "Töötlev tööstus",
-    "15": "Töötlev tööstus",
-    "16": "Töötlev tööstus",
-    "17": "Töötlev tööstus",
-    "18": "Töötlev tööstus",
-    "19": "Töötlev tööstus",
-    "20": "Töötlev tööstus",
-    "21": "Töötlev tööstus",
-    "22": "Töötlev tööstus",
-    "23": "Töötlev tööstus",
-    "24": "Töötlev tööstus",
-    "25": "Töötlev tööstus",
-    "26": "Töötlev tööstus",
-    "27": "Töötlev tööstus",
-    "28": "Töötlev tööstus",
-    "29": "Töötlev tööstus",
-    "30": "Töötlev tööstus",
-    "31": "Töötlev tööstus",
-    "32": "Töötlev tööstus",
-    "33": "Töötlev tööstus",
-    "35": "Elektrienergia, gaasi, auru ja konditsioneeritud õhuga varustamine",
-    "36": "Veevarustus; kanalisatsioon, jäätme- ja saastekäitlus",
-    "37": "Veevarustus; kanalisatsioon, jäätme- ja saastekäitlus",
-    "38": "Veevarustus; kanalisatsioon, jäätme- ja saastekäitlus",
-    "39": "Veevarustus; kanalisatsioon, jäätme- ja saastekäitlus",
-    "41": "Ehitus",
-    "42": "Ehitus",
-    "43": "Ehitus",
-    "45": "Hulgi- ja jaekaubandus; mootorsõidukite ja mootorrataste re ...",
-    "46": "Hulgi- ja jaekaubandus; mootorsõidukite ja mootorrataste re ...",
-    "47": "Hulgi- ja jaekaubandus; mootorsõidukite ja mootorrataste re ...",
-    "49": "Veondus ja laondus",
-    "50": "Veondus ja laondus",
-    "51": "Veondus ja laondus",
-    "52": "Veondus ja laondus",
-    "53": "Veondus ja laondus",
-    "55": "Majutus ja toitlustus",
-    "56": "Majutus ja toitlustus",
-    "58": "Info ja side",
-    "59": "Info ja side",
-    "60": "Info ja side",
-    "61": "Info ja side",
-    "62": "Info ja side",
-    "63": "Info ja side",
-    "64": "Finants- ja kindlustustegevus",
-    "65": "Finants- ja kindlustustegevus",
-    "66": "Finants- ja kindlustustegevus",
-    "68": "Kinnisvaraalane tegevus",
-    "69": "Kutse-, teadus- ja tehnikaalane tegevus",
-    "70": "Kutse-, teadus- ja tehnikaalane tegevus",
-    "71": "Kutse-, teadus- ja tehnikaalane tegevus",
-    "72": "Kutse-, teadus- ja tehnikaalane tegevus",
-    "73": "Kutse-, teadus- ja tehnikaalane tegevus",
-    "74": "Kutse-, teadus- ja tehnikaalane tegevus",
-    "75": "Kutse-, teadus- ja tehnikaalane tegevus",
-    "77": "Haldus- ja abitegevused",
-    "78": "Haldus- ja abitegevused",
-    "79": "Haldus- ja abitegevused",
-    "80": "Haldus- ja abitegevused",
-    "81": "Haldus- ja abitegevused",
-    "82": "Haldus- ja abitegevused",
-    "84": "Avalik haldus ja riigikaitse; kohustuslik sotsiaalkindlustus",
-    "85": "Haridus",
-    "86": "Tervishoid ja sotsiaalhoolekanne",
-    "87": "Tervishoid ja sotsiaalhoolekanne",
-    "88": "Tervishoid ja sotsiaalhoolekanne",
-    "90": "Kunst, meelelahutus ja vaba aeg",
-    "91": "Kunst, meelelahutus ja vaba aeg",
-    "92": "Kunst, meelelahutus ja vaba aeg",
-    "93": "Kunst, meelelahutus ja vaba aeg",
-    "94": "Muud teenindavad tegevused",
-    "95": "Muud teenindavad tegevused",
-    "96": "Muud teenindavad tegevused",
-    "97": "Kodumajapidamiste kui tööandjate tegevus; kodumajapidam ...",
-    "98": "Kodumajapidamiste kui tööandjate tegevus; kodumajapidam ...",
-    "99": "Eksterritoriaalsete organisatsioonide ja üksuste tegevus",
-}
+EMTAK_RANGES = [
+    (1, 3, "Põllumajandus, metsamajandus ja kalapüük"),
+    (5, 9, "Mäetööstus"),
+    (10, 33, "Töötlev tööstus"),
+    (35, 35, "Elektrienergia, gaasi, auru ja konditsioneeritud õhuga varustamine"),
+    (36, 39, "Veevarustus; kanalisatsioon, jäätme- ja saastekäitlus"),
+    (41, 43, "Ehitus"),
+    (45, 47, "Hulgi- ja jaekaubandus; mootorsõidukite ja mootorrataste remont"),
+    (49, 53, "Veondus ja laondus"),
+    (55, 56, "Majutus ja toitlustus"),
+    (58, 63, "Info ja side"),
+    (64, 66, "Finants- ja kindlustustegevus"),
+    (68, 68, "Kinnisvaraalane tegevus"),
+    (69, 75, "Kutse-, teadus- ja tehnikaalane tegevus"),
+    (77, 82, "Haldus- ja abitegevused"),
+    (84, 84, "Avalik haldus ja riigikaitse; kohustuslik sotsiaalkindlustus"),
+    (85, 85, "Haridus"),
+    (86, 88, "Tervishoid ja sotsiaalhoolekanne"),
+    (90, 93, "Kunst, meelelahutus ja vaba aeg"),
+    (94, 96, "Muud teenindavad tegevused"),
+    (97, 98, "Kodumajapidamiste kui tööandjate tegevus; kodumajapidamiste oma tarbeks tootmine"),
+    (99, 99, "Eksterritoriaalsete organisatsioonide ja üksuste tegevus"),
+]
 
 
 # --- EMTAK Code Utilities ---
@@ -250,27 +183,32 @@ EMTAK_MAP = {
 def get_emtak_section_text(emtak_code: Optional[str]) -> Optional[str]:
     """
     Finds the broader industry section (Tegevusvaldkond) based on the first
-    two digits of the EMTAK code using the internal EMTAK_MAP.
-
-    Args:
-        emtak_code: The detailed EMTAK code (e.g., '73111').
-
-    Returns:
-        The corresponding industry section name (e.g., 'Kutse-, teadus...') or None.
+    two digits of the EMTAK code using the EMTAK_RANGES.
+    Returns format: "01-03: Section Name" (Commas replaced by semicolons for Notion)
     """
     if not emtak_code:
         return None
 
-    # Filter out non-digit characters
+    # Filter out non-digit characters to be safe
     cleaned_code = "".join(filter(str.isdigit, str(emtak_code)))
 
     if len(cleaned_code) >= 2:
-        two_digit_code = cleaned_code[:2]
-        return EMTAK_MAP.get(two_digit_code)
+        try:
+            # Take the first 2 digits and convert to integer for range comparison
+            code_int = int(cleaned_code[:2])
+
+            for start, end, name in EMTAK_RANGES:
+                if start <= code_int <= end:
+                    range_str = f"{start:02d}-{end:02d}" if start != end else f"{start:02d}"
+
+                    safe_name = name.replace(",", ";")
+
+                    return f"{range_str}: {safe_name}"
+
+        except ValueError:
+            return None
 
     return None
-
-
 # --- Data Transformation Functions ---
 
 
@@ -419,30 +357,32 @@ def _build_properties_from_company(
     if not emtak_jaotis_val:
         empty_fields.append("Tegevusvaldkond (Industry Section)")
 
+    tegevusvaldkond_prop = {"multi_select": []}
+    if emtak_jaotis_val:
+        tegevusvaldkond_prop = {
+            "multi_select": [{"name": emtak_jaotis_val}]
+        }
+
     properties = {
-        "Nimi": {"title": [{"text": {"content": company_name or ""}}]},  # Name
-        # Assuming Registrikood property is set as 'Number' in Notion
+        "Nimi": {"title": [{"text": {"content": company_name or ""}}]},
         "Registrikood": (
             {"number": int(regcode)} if regcode.isdigit() else {"number": None}
-        ),  # Registry Code
-        "Aadress": {"rich_text": [{"text": {"content": aadress_val or ""}}]},  # Address
-        "Maakond": maakond_prop,  # County
-        "E-post": email_prop,  # Email
-        "Tel. nr": tel_prop,  # Phone No
-        "Veebileht": veeb_prop,  # Website
+        ),
+        "Aadress": {"rich_text": [{"text": {"content": aadress_val or ""}}]},
+        "Maakond": maakond_prop,
+        "E-post": email_prop,
+        "Tel. nr": tel_prop,
+        "Veebileht": veeb_prop,
         "LinkedIn": linkedin_prop,
         "Kontaktisikud": {
             "people": yldandmed.get("kontaktisikud_list", [])
-        },  # Contact Persons (People property)
-        # Põhitegevus (Main Activity): Detailed text from JSON
+        },
         "Põhitegevus": {
             "rich_text": [{"text": {"content": emtak_detailne_tekst_val or ""}}]
         },
-        # Tegevusvaldkond (Industry Section): Broad category from EMTAK_MAP
-        "Tegevusvaldkond": {
-            "rich_text": [{"text": {"content": emtak_jaotis_val or ""}}]
-        },
+        "Tegevusvaldkond": tegevusvaldkond_prop,
     }
+
 
     # NOTE: Set value to None instead of placeholder text to allow Notion to accept a true empty value if needed
     # The original code used placeholders, I'm adjusting to use None for proper Notion handling of empty fields (URL, Email, Phone Number types)
