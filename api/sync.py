@@ -548,6 +548,7 @@ def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, 
     NOTION_API_KEY = config.get("notion", {}).get("token")
     NOTION_DATABASE_ID = config.get("notion", {}).get("database_id")
     ARIREGISTER_JSON_URL = config.get("ariregister", {}).get("json_url")
+    NOTION_API_VERSION = config.get("notion", {}).get("api_version")
 
     # Configuration validation
     if not all([NOTION_API_KEY, NOTION_DATABASE_ID, ARIREGISTER_JSON_URL]):
@@ -557,7 +558,7 @@ def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, 
 
     logging.debug(f"Using NOTION_DATABASE_ID: {NOTION_DATABASE_ID}")
 
-    notion = NotionClient(NOTION_API_KEY, NOTION_DATABASE_ID)
+    notion = NotionClient(NOTION_API_KEY, NOTION_DATABASE_ID, NOTION_API_VERSION)
 
     # 1. Fetch Page and Extract Registry Code
     regcode = None
