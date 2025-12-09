@@ -390,13 +390,13 @@ def _build_properties_from_company(
 
     # Simple properties must be explicitly set to None (or the specific property type's empty value)
     if not email_val:
-        properties["E-post"] = {"email": None}
+        properties["E-post"] = {"email": "E-maili ei leitud."}
     if not tel_val:
-        properties["Tel. nr"] = {"phone_number": None}
+        properties["Tel. nr"] = {"phone_number": "Telefoni numbrit ei leitud."}
     if not veeb_val:
-        properties["Veebileht"] = {"url": None}
+        properties["Veebileht"] = {"url": "Veebilehte ei leitud."}
     if not linkedin_val:
-        properties["LinkedIn"] = {"url": None}
+        properties["LinkedIn"] = {"url": "LinkedIn-i ei leitud."}
 
     return properties, empty_fields, company_name or ""
 
