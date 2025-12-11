@@ -63,8 +63,8 @@ def mock_cache_env_expired(monkeypatch):
 def mock_notion_client(monkeypatch):
     instances = []
 
-    def constructor(token, database_id):
-        instance = MockNotionClient(token, database_id)
+    def constructor(token, database_id, api_version):
+        instance = MockNotionClient(token, database_id, api_version)
         instances.append(instance)
         return instance
 

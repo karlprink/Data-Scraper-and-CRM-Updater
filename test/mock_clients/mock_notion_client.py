@@ -2,13 +2,14 @@ from unittest.mock import MagicMock
 
 
 class MockNotionClient:
-    def __init__(self, token, database_id):
+    def __init__(self, token, database_id, api_version):
         self.token = token
         self.database_id = database_id
+        self.api_version = api_version
         self.headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
-            "Notion-Version": "2021-03-31",
+            "Notion-Version": self.api_version,
         }
         self.get_page_called = MagicMock()
         self.create_page_called = MagicMock()
