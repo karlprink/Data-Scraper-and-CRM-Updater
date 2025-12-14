@@ -177,13 +177,26 @@ def run_full_staff_search(base_url):
 
     1. STRATEGIC LEADERSHIP:
        - 'CEO', 'Tegevjuht'
+       - 'COO', 'Chief Operating Officer'
+       - 'CIO', 'Chief Information Officer'
+       - 'CTO', 'Chief Technology Officer'
+       - 'Managing Director'
+       - 'Founder'
 
-    2. PERSONNEL / MARKETING:
+    2. DEVELOPMENT / TECHNOLOGY:
+       - 'Arendusjuht', 'Head of Development'
+       - 'IT-juht', 'IT Manager', 'Head of IT'
+       - 'Innovatsioonijuht', 'Head of Innovation'
+
+    3. PROJECT MANAGEMENT:
+       - 'Projektijuht', 'Project Manager'
+
+    4. PERSONNEL / MARKETING:
        - 'HR Manager', 'Personalijuht'
        - 'Head of Marketing', 'Turundusjuht'
        - 'Head of Sales', 'Müügijuht'
 
-    3. GENERAL CONTACT:
+    5. GENERAL CONTACT:
        - 'General Contact'
 
     RULES:
