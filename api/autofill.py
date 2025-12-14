@@ -118,7 +118,12 @@ def autofill():
         else:
             # Keep error message short for Notion
             msg = result.get("message") or "Tundmatu viga"
-            update_autofill_status(page_id, f"Viga: {msg[:200]}", config)
+            # For duplicate registrikood, the message is already complete, don't add "Viga: " prefix
+            step = result.get("step", "")
+            if step == "duplicate_registrikood":
+                update_autofill_status(page_id, msg[:200], config)
+            else:
+                update_autofill_status(page_id, f"Viga: {msg[:200]}", config)
 
         # In any case: auto-close
         return Response(AUTO_CLOSE_HTML, mimetype="text/html", status=200)

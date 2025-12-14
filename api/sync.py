@@ -679,6 +679,35 @@ def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, 
 
         logging.info(f"Found Registrikood: {regcode}")
 
+        # Check if a company with this registry code already exists (on a different page)
+        existing_page = notion.query_by_regcode(regcode)
+        if existing_page and existing_page.get("id") != page_id:
+            # Company with this registry code already exists on another page
+            existing_props = existing_page.get("properties", {})
+            nimi_prop = existing_props.get("Nimi", {})
+            company_name = ""
+            
+            # Extract company name from existing page
+            if nimi_prop:
+                prop_type = nimi_prop.get("type")
+                if prop_type == "title":
+                    title_array = nimi_prop.get("title", [])
+                    if title_array and len(title_array) > 0:
+                        company_name = clean_value(title_array[0].get("text", {}).get("content", ""))
+            
+            # Create error message in Estonian
+            if company_name:
+                error_msg = f"Ettevõte registrikoodiga {regcode} ({company_name}) on juba olemas Notionis."
+            else:
+                error_msg = f"Ettevõte registrikoodiga {regcode} on juba olemas Notionis."
+            
+            logging.warning(error_msg)
+            return {
+                "success": False,
+                "message": error_msg,
+                "step": "duplicate_registrikood",
+            }
+
     except Exception as e:
         error_msg = f"Lehe hankimine või andmete eraldamine Notionist ebaõnnestus: {e}"
         logging.error(error_msg)

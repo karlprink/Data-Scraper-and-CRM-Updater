@@ -4,10 +4,11 @@ import requests
 class NotionClient:
     """Class for communicating with the Notion API."""
 
-    def __init__(self, token: str, database_id: str, api_version: str):
+    def __init__(self, token: str, database_id: str, api_version: str = None):
         self.token = token
         self.database_id = database_id
-        self.api_version = api_version
+        # Default to a recent API version if not provided
+        self.api_version = api_version or "2022-06-28"
         self.headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
