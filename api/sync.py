@@ -532,6 +532,75 @@ def process_company_sync(
 # --- Web/API Autofill Logic ---
 
 
+def _is_placeholder_value(prop_value: Any, prop_type: str) -> bool:
+    """
+    Checks if a Notion property value is a placeholder (e.g., "Veebilehte ei leitud.").
+    
+    Args:
+        prop_value: The property value from Notion
+        prop_type: The type of the property (e.g., "url", "email", "phone_number")
+        
+    Returns:
+        True if the value is a placeholder, False otherwise
+    """
+    if prop_value is None:
+        return True
+    
+    # Define placeholder values
+    placeholders = {
+        "E-maili ei leitud.",
+        "Telefoni numbrit ei leitud.",
+        "Veebilehte ei leitud.",
+        "LinkedIn-i ei leitud.",
+    }
+    
+    # Extract the actual value based on property type
+    if prop_type == "url":
+        value = prop_value if isinstance(prop_value, str) else None
+    elif prop_type == "email":
+        value = prop_value if isinstance(prop_value, str) else None
+    elif prop_type == "phone_number":
+        value = prop_value if isinstance(prop_value, str) else None
+    else:
+        return False
+    
+    return value in placeholders if value else True
+
+
+def _get_property_value(props: Dict[str, Any], field_name: str) -> Tuple[Any, str]:
+    """
+    Extracts the value and type of a Notion property.
+    
+    Args:
+        props: The properties dictionary from a Notion page
+        field_name: The name of the property to extract
+        
+    Returns:
+        Tuple of (value, property_type) or (None, None) if not found
+    """
+    prop = props.get(field_name)
+    if not prop:
+        return None, None
+    
+    prop_type = prop.get("type")
+    if not prop_type:
+        return None, None
+    
+    if prop_type == "url":
+        return prop.get("url"), "url"
+    elif prop_type == "email":
+        return prop.get("email"), "email"
+    elif prop_type == "phone_number":
+        return prop.get("phone_number"), "phone_number"
+    elif prop_type == "rich_text":
+        rich_text = prop.get("rich_text", [])
+        if rich_text:
+            return rich_text[0].get("text", {}).get("content"), "rich_text"
+        return None, "rich_text"
+    
+    return None, prop_type
+
+
 def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, Any]:
     """
     Fetches the 'Registrikood' from a given Notion page, finds the corresponding
@@ -662,8 +731,31 @@ def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, 
                 "Google ei leidnud sobivat kodulehte (10 esimese tulemuse seas), jätame Veebileht tühjaks."
             )
 
+    # 3.2 Filter properties to only update fields that are empty or contain placeholders
+    # This preserves manually added content
+    filtered_properties = {}
+    fields_to_check = ["E-post", "Tel. nr", "Veebileht", "LinkedIn"]
+    
+    for field_name in properties.keys():
+        if field_name in fields_to_check:
+            # Get existing value from Notion page
+            existing_value, prop_type = _get_property_value(props, field_name)
+            
+            # If field doesn't exist yet (None, None), or is empty/placeholder, update it
+            if existing_value is None or _is_placeholder_value(existing_value, prop_type):
+                filtered_properties[field_name] = properties[field_name]
+                if existing_value is None:
+                    logging.debug(f"Will update {field_name} (field is empty)")
+                else:
+                    logging.debug(f"Will update {field_name} (contains placeholder: {existing_value})")
+            else:
+                logging.info(f"Skipping {field_name} - contains manually added content: {existing_value}")
+        else:
+            # For other fields (like Nimi, Registrikood, etc.), always update
+            filtered_properties[field_name] = properties[field_name]
+
     try:
-        notion.update_page(page_id, properties)
+        notion.update_page(page_id, filtered_properties)
         message = f"✅ Andmed edukalt automaatselt täidetud lehele {company_name} ({regcode})."
 
         if empty_fields:
