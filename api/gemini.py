@@ -18,11 +18,13 @@ AI_MODEL = config["google"]["ai_model"]
 # Configure the client
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
+
+
 try:
     # Initialize the Gemini model
     model = genai.GenerativeModel(AI_MODEL)
 except Exception as e:
-    print(f"Error initializing the model: {e}")
+    print(f"Viga mudeli initsialiseerimisel: {e}")
     exit()
 
 company_website_client = CompanyWebsiteClient()
@@ -51,11 +53,11 @@ def get_website_text(url):
         chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
         cleaned_text = "\n".join(chunk for chunk in chunks if chunk)
 
-        print("   ... Content successfully downloaded and cleaned.")
+        print("   ... Sisu edukalt alla laetud ja puhastatud.")
         return cleaned_text
 
     except requests.exceptions.RequestException as e:
-        print(f"   ... Error downloading the website: {e}")
+        print(f"   ... Viga veebilehe allalaadimisel: {e}")
         return None
 
 
@@ -125,7 +127,7 @@ def find_contact_page_url(base_url):
             return suggested_url
 
     except requests.exceptions.RequestException as e:
-        print(f"   ... Error downloading the homepage: {e}")
+        print(f"   ... Viga pealehe allalaadimisel: {e}")
         return base_url  # Use the original URL in case of errors
 
 
@@ -153,7 +155,7 @@ def run_full_staff_search(base_url):
     website_text = get_website_text(contact_page_url)
 
     if not website_text:
-        print("Could not retrieve website content. Aborting.")
+        print("Ei saanud veebilehe sisu kätte. Katkestan.")
         return None
 
     # 3. Step: Construct a new prompt and send it to Gemini
@@ -240,10 +242,10 @@ def run_full_staff_search(base_url):
             print("--------------------------------\n")
             return data
         except json.JSONDecodeError as e:
-            print(f"Error parsing JSON: {e}")
+            print(f"Viga JSON-i parsimisel: {e}")
             print(f"Response: {json_response}")
             return None
 
     except Exception as e:
-        print(f"Error making the request: {e}")
+        print(f"Viga päringu tegemisel: {e}")
         return None

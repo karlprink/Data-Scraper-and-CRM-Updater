@@ -53,7 +53,7 @@ def update_staff():
             config = load_config()
             return render_error_response(
                 status="Viga",
-                message=f"Critical API Error: {str(e)}. Check Vercel/Environment settings.",
+                message=f"Kriitiline API viga: {str(e)}. Kontrolli Vercel/Keskkonna seadeid.",
                 debug_info=json.dumps(config, indent=2, ensure_ascii=False),
                 status_code=500,
             )
@@ -65,9 +65,9 @@ def update_staff():
         if not website_url:
             return render_error_response(
                 status="Viga",
-                message="Critical Error: Required 'websiteUrl' parameter is missing. Please provide the company website URL.",
-                debug_info='Example: {"websiteUrl": "https://example.com"}',
-                status_code=400,
+                message="Kriitiline viga: Nõutud parameeter 'websiteUrl' puudub. Palun sisesta ettevõtte veebilehe URL.",
+                debug_info='Näide: {"websiteUrl": "https://example.com"}',
+                status_code=400
             )
 
         # Normalize website URL
@@ -87,9 +87,9 @@ def update_staff():
 
         if staff_data == []:
             return render_warning_response(
-                message="⚠️ No staff information found on the website. The website may not contain contact information for the specified roles (CEO, HR Manager, Head of Marketing, Head of Sales, or General Contact).",
+                message="⚠️ Veebilehelt ei leitud kontaktisikute infot. Veebileht ei pruugi sisaldada kontaktinfot määratud rollide jaoks (Tegevjuht, Personalijuht, Turundusjuht, Müügijuht või Üldine kontakt).",
                 notion_url=notion_url,
-                debug_info=f"Website URL: {website_url}",
+                debug_info=f"Veebilehe URL: {website_url}"
             )
 
         # Initialize Notion client
@@ -122,7 +122,7 @@ def update_staff():
         traceback.print_exc()
         return render_error_response(
             status="Kriitiline API viga",
-            message=f"A general error occurred during API processing: {type(e).__name__}: {e}",
+            message=f"API töötlemise ajal tekkis üldine viga: {type(e).__name__}: {e}",
             notion_url=notion_url,
             debug_info=traceback.format_exc(),
             status_code=500,
@@ -136,7 +136,7 @@ def health_check():
     """
     return {
         "status": "ok",
-        "message": "Update Staff API is running",
+        "message": "Kontaktisikute uuendamise API töötab",
     }
 
 

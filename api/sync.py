@@ -107,7 +107,7 @@ def google_find_website(company_name: str) -> Optional[str]:
     if not company_name:
         return None
     if not GOOGLE_API_KEY or not GOOGLE_CSE_CX:
-        logging.info("Google API key/cx is missing – skipping website search.")
+        logging.info("Google API võti/cx puudub – jätan veebilehe otsingu vahele.")
         return None
 
     try:
@@ -130,7 +130,7 @@ def google_find_website(company_name: str) -> Optional[str]:
 
         if not candidates:
             logging.info(
-                "No suitable website candidate found among the first 10 Google CSE results."
+                "Google CSE 10 esimese tulemuse seas ei leitud ühtegi sobivat kodulehe kandidaati."
             )
             return None
 
@@ -138,12 +138,12 @@ def google_find_website(company_name: str) -> Optional[str]:
         candidates.sort(key=lambda t: t[0], reverse=True)
         best_score, best_url, best_host = candidates[0]
         logging.info(
-            f"Google CSE selected the best website (score={best_score}): {best_host} -> {best_url}"
+            f"Google CSE valis sobiva kodulehe (score={best_score}): {best_host} -> {best_url}"
         )
         return best_url
 
     except Exception as e:
-        logging.warning(f"Google CSE query failed: {e}")
+        logging.warning(f"Google CSE päring ebaõnnestus: {e}")
         return None
 
 
@@ -423,19 +423,19 @@ def load_company_data(regcode: str, config: Dict[str, Any]) -> Dict[str, Any]:
     if not regcode or not str(regcode).isdigit():
         return {
             "status": "error",
-            "message": "Registry code is missing or contains non-digit characters (must be a number).",
+            "message": "Registrikood puudub või sisaldab mittenumbrilisi märke (peab olema number)."
         }
 
     try:
         # find_company_by_regcode automatically cleans the data (clean_value)
         company = find_company_by_regcode(config["ariregister"]["json_url"], regcode)
     except Exception as e:
-        return {"status": "error", "message": f"Error loading file: {e}"}
+        return {"status": "error", "message": f"Viga faili laadimisel: {e}"}
 
     if not company:
         return {
             "status": "error",
-            "message": f"Company with registry code {regcode} not found in the Business Register data (JSON).",
+            "message": f"Ettevõtet registrikoodiga {regcode} ei leitud Äriregistri andmetest (JSON)."
         }
 
     company_name = clean_value(company.get("nimi"))
@@ -452,7 +452,7 @@ def load_company_data(regcode: str, config: Dict[str, Any]) -> Dict[str, Any]:
             "empty_fields": empty_fields,
             "company_name": company_name,
         },
-        "message": f"Data found: {company_name} ({regcode}).",
+        "message": f"Andmed leitud: {company_name} ({regcode})."
     }
 
 
@@ -496,19 +496,18 @@ def process_company_sync(
         if existing:
             # Update existing page
             notion.update_page(existing["id"], properties)
-            action = "Successfully Updated"
+            action = "Edukalt uuendatud"
         else:
             # Create a new page
             notion.create_page(full_payload)
-            action = "Successfully Created"
+            action = "Edukalt loodud"
 
         status = "success"
-        message = f"✅ {action}: {company_name} ({regcode}). Record was synchronized to Notion."
+        message = f"✅ {action}: {company_name} ({regcode}). Kirje sünkroniseeriti Notioni."
 
         if empty_fields:
             status = "warning"
-            # Translate the warning message
-            message += f"\n ⚠️ Warning: The following fields were left empty: {', '.join(empty_fields)}."
+            message += f"\n ⚠️ Hoiatus: Järgmised väljad jäid tühjaks: {', '.join(empty_fields)}."
 
         return {"status": status, "message": message, "company_name": company_name}
 
@@ -521,12 +520,12 @@ def process_company_sync(
 
         return {
             "status": "error",
-            "message": f"❌ Notion API Error ({e.response.status_code}): {error_details}",
+            "message": f"❌ Notion API viga ({e.response.status_code}): {error_details}"
         }
     except Exception as e:
         return {
             "status": "error",
-            "message": f"❌ General Synchronization Error: {type(e).__name__}: {e}",
+            "message": f"❌ Üldine sünkroniseerimise viga: {type(e).__name__}: {e}"
         }
 
 
@@ -555,7 +554,7 @@ def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, 
 
     # Configuration validation
     if not all([NOTION_API_KEY, NOTION_DATABASE_ID, ARIREGISTER_JSON_URL]):
-        error_msg = "Viga: Missing one or more required configuration (NOTION_API_KEY, NOTION_DATABASE_ID, ARIREGISTER_JSON_URL)."
+        error_msg = "Puudub üks või mitu nõutud konfiguratsiooni seadet (NOTION_API_KEY, NOTION_DATABASE_ID, ARIREGISTER_JSON_URL)."
         logging.error(error_msg)
         return {"success": False, "message": error_msg, "step": "config_check"}
 
@@ -568,7 +567,7 @@ def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, 
     try:
         page = notion.get_page(page_id)
         props = page.get("properties", {})
-        logging.info("Successfully fetched page properties from Notion.")
+        logging.info("Edukalt hankitud lehe omadused Notionist.")
 
         reg_prop = props.get("Registrikood")
 
@@ -579,7 +578,7 @@ def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, 
             # Translate message
             return {
                 "success": False,
-                "message": "Viga: The 'Registrikood' property is missing on the Notion page.",
+                "message": "Viga: Notioni lehel puudub 'Registrikood' väli.",
                 "step": "missing_registrikood",
             }
 
@@ -601,10 +600,8 @@ def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, 
                     regcode = "".join(ch for ch in content if ch.isdigit())
 
         if not regcode:
-            # ORIGINAL: "'Registrikood' value is empty or in an invalid format on the Notion page."
-            error_msg = "'Registrikood' value is empty or in an invalid format on the Notion page."
+            error_msg = "'Registrikood' väärtus on Notioni lehel tühi või vales formaadis."
             logging.warning(error_msg)
-            # Translate message
             return {
                 "success": False,
                 "message": f"Viga: {error_msg}",
@@ -614,22 +611,21 @@ def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, 
         logging.info(f"Found Registrikood: {regcode}")
 
     except Exception as e:
-        error_msg = f"Viga: Failed to fetch page or extract data from Notion: {e}"
+        error_msg = f"Lehe hankimine või andmete eraldamine Notionist ebaõnnestus: {e}"
         logging.error(error_msg)
         return {"success": False, "message": error_msg, "step": "fetch_page_or_extract"}
 
     # 2. Fetch Company Data from JSON
     try:
         company = find_company_by_regcode(ARIREGISTER_JSON_URL, regcode)
-        logging.info("Successfully loaded data and searched company.")
+        logging.info("Edukalt laetud andmed ja otsitud ettevõte.")
     except Exception as e:
-        error_msg = f"Viga: Failed to load JSON or search company: {e}"
+        error_msg = f"JSON-i laadimine või ettevõtte otsimine ebaõnnestus: {e}"
         logging.error(error_msg)
         return {"success": False, "message": error_msg, "step": "load_json_or_search"}
 
     if not company:
-        # ORIGINAL: f"Company with registry code {regcode} not found in JSON data."
-        error_msg = f"Company with registry code {regcode} not found in JSON data."
+        error_msg = f"Ettevõtet registrikoodiga {regcode} ei leitud JSON andmetest."
         logging.warning(error_msg)
         # Translate message
         return {
@@ -653,7 +649,7 @@ def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, 
     existing_url = veeb_prop.get("url")
     if not existing_url:
         logging.info(
-            "Website is missing in Business Register data – trying to find via Google CSE."
+            "Veebileht puudub Äriregistri andmetes – proovime leida Google CSE abil."
         )
         homepage = google_find_website(company_name)
         if homepage:
@@ -663,14 +659,12 @@ def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, 
                 empty_fields.remove("Veebileht (Website)")
         else:
             logging.info(
-                "Google did not find a suitable website (among the first 10 results), leaving 'Veebileht' empty."
+                "Google ei leidnud sobivat kodulehte (10 esimese tulemuse seas), jätame Veebileht tühjaks."
             )
 
     try:
         notion.update_page(page_id, properties)
-        message = (
-            f"✅ Data successfully autofilled for page {company_name} ({regcode})."
-        )
+        message = f"✅ Andmed edukalt automaatselt täidetud lehele {company_name} ({regcode})."
 
         if empty_fields:
             # The test expects "Edukalt uuendatud" AND "Viga: Warning..."
@@ -686,12 +680,10 @@ def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, 
         except:
             error_details = e.response.text
 
-        error_msg = (
-            f"Viga: Notion API Error ({e.response.status_code}): {error_details}"
-        )
+        error_msg = f"❌ Notion API viga ({e.response.status_code}): {error_details}"
         logging.error(error_msg)
         return {"success": False, "message": error_msg, "step": "notion_update"}
     except Exception as e:
-        error_msg = f"Viga: General Autofill Error: {type(e).__name__}: {e}"
+        error_msg = f"❌ Üldine automaatse täitmise viga: {type(e).__name__}: {e}"
         logging.error(error_msg)
         return {"success": False, "message": error_msg, "step": "general_error"}

@@ -77,7 +77,7 @@ def load_json(url: str, target_code: str) -> Optional[Dict[str, Any]]:
     if os.path.exists(result_cache_file):
         file_mod_time = os.path.getmtime(result_cache_file)
         if (time.time() - file_mod_time) < CACHE_EXPIRATION.total_seconds():
-            print(f"CACHE HIT: Found data for registry code {target_code} in cache.")
+            print(f"VAHEMÄLU TABAMUS: Leitud andmed registrikoodiga {target_code} vahemälust.")
             with open(result_cache_file, "r", encoding="utf-8") as f:
                 return json.load(f)
 
@@ -85,7 +85,7 @@ def load_json(url: str, target_code: str) -> Optional[Dict[str, Any]]:
     if (not os.path.exists(CACHE_FILE_PATH)) or (
         time.time() - os.path.getmtime(CACHE_FILE_PATH)
     ) > CACHE_EXPIRATION.total_seconds():
-        print(f"CACHE MISS: Downloading new ZIP file: {url}")
+        print(f"VAHEMÄLU PUUDUB: Laen alla uue ZIP faili: {url}")
         headers = {"User-Agent": "Mozilla/5.0"}
 
         # Prevents loading the whole file into memory
@@ -96,35 +96,29 @@ def load_json(url: str, target_code: str) -> Optional[Dict[str, Any]]:
             with open(CACHE_FILE_PATH, "wb") as f:
                 for chunk in r.iter_content(chunk_size=1024 * 1024):  # 1MB chunks
                     f.write(chunk)
-        print("ZIP file downloaded and saved to cache.")
+        print("ZIP fail laetud alla ja salvestatud vahemällu.")
     else:
-        print("Using existing ZIP cache file.")
+        print("Kasutan olemasolevat ZIP vahemälu faili.")
 
     # 3. Search inside the JSON file using ijson
     with zipfile.ZipFile(CACHE_FILE_PATH) as z:
         # Assuming the JSON file is the first (and only) file in the ZIP
         json_filename = z.namelist()[0]
         with z.open(json_filename) as f:
-            print(
-                f"Streaming JSON from ZIP ({json_filename}) and searching for {target_code}..."
-            )
+            print(f"JSON-i voogedastus ZIP-ist ({json_filename}) ja otsin {target_code}...")
 
             try:
                 for obj in ijson.items(f, "item"):
                     # The 'ariregistri_kood' is the registry code in the JSON structure
                     if str(obj.get("ariregistri_kood")) == str(target_code):
-                        print(
-                            f"✅ Company {target_code} found, saving result to cache."
-                        )
+                        print(f"✅ Ettevõte {target_code} leitud, salvestan tulemuse vahemällu.")
                         with open(result_cache_file, "w", encoding="utf-8") as out:
                             json.dump(obj, out, ensure_ascii=False, indent=2)
                         return obj
             except ijson.common.IncompleteJSONError:
-                print(
-                    "Warning: JSON parsing ended prematurely (possible ZIP file error)."
-                )
+                print("Hoiatus: JSON-i parsimine lõppes enneaegselt (võimalik ZIP faili viga).")
 
-    print(f"⚠️ Company with registry code {target_code} not found in the dataset.")
+    print(f"⚠️ Ettevõtet registrikoodiga {target_code} ei leitud andmestikust.")
     return None
 
 

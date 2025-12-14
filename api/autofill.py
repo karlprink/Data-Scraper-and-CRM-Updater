@@ -117,8 +117,8 @@ def autofill():
             update_autofill_status(page_id, "Edukalt uuendatud", config)
         else:
             # Keep error message short for Notion
-            msg = result.get("message") or "Unknown error (EST)"
-            update_autofill_status(page_id, f"Error: {msg[:200]}", config)
+            msg = result.get("message") or "Tundmatu viga"
+            update_autofill_status(page_id, f"Viga: {msg[:200]}", config)
 
         # In any case: auto-close
         return Response(AUTO_CLOSE_HTML, mimetype="text/html", status=200)
@@ -129,7 +129,7 @@ def autofill():
         if page_id and config_ok:
             try:
                 update_autofill_status(
-                    page_id, f"Error: {type(e).__name__}: {e}", config
+                    page_id, f"Viga: {type(e).__name__}: {e}", config
                 )
             except Exception:
                 pass
@@ -144,7 +144,7 @@ def health_check():
     """
     return {
         "status": "ok",
-        "message": "Notion Autofill API is running",
+        "message": "Notioni automaatse täitmise API töötab",
     }
 
 

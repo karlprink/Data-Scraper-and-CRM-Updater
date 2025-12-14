@@ -38,7 +38,7 @@ HTML_TEMPLATE = """
         {% endif %}
 
         {% if debug_info %}
-        <h2>Debug Info (Ainult vigade korral)</h2>
+        <h2>Silumisinfo (Ainult vigade korral)</h2>
         <pre>{{ debug_info }}</pre>
         {% endif %}
     </div>

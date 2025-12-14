@@ -22,10 +22,10 @@ def load_csv(url: str) -> pd.DataFrame:
     if os.path.exists(CACHE_FILE_PATH):
         file_mod_time = os.path.getmtime(CACHE_FILE_PATH)
         if (time.time() - file_mod_time) < CACHE_EXPIRATION.total_seconds():
-            print("CACHE HIT: Loading data from local cache.")
+            print("VAHEMÄLU TABAMUS: Laen andmeid kohalikust vahemälust.")
             return pd.read_csv(CACHE_FILE_PATH, sep=";")
 
-    print("CACHE MISS: Downloading fresh data from the URL.")
+    print("VAHEMÄLU PUUDUB: Laen alla värskeid andmeid URL-ist.")
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
     }
@@ -46,7 +46,7 @@ def load_csv(url: str) -> pd.DataFrame:
         print("Detected ZIP file, using pandas compression support...")
         df = pd.read_csv(io.BytesIO(response.content), sep=";", compression="zip")
     else:
-        print("Reading as direct CSV file...")
+        print("Loeb otse CSV failina...")
         df = pd.read_csv(io.StringIO(response.text), sep=";")
 
     df.to_csv(CACHE_FILE_PATH, sep=";", index=False)

@@ -26,7 +26,7 @@ def fetch_staff_data(
     if staff_data is None:
         return (
             None,
-            "Error: Could not fetch or analyze the website content. Please check the website URL and try again.",
+            "Viga: Ei saanud veebilehe sisu hankida või analüüsida. Palun kontrolli veebilehe URL-i ja proovi uuesti.",
         )
 
     if not staff_data or len(staff_data) == 0:
