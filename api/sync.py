@@ -635,8 +635,11 @@ def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, 
     regcode = None
     try:
         page = notion.get_page(page_id)
+        # Get the actual page ID from the page object to ensure consistency
+        actual_page_id = page.get("id", page_id)
         props = page.get("properties", {})
         logging.info("Edukalt hankitud lehe omadused Notionist.")
+        logging.debug(f"Page ID from parameter: {page_id}, Page ID from Notion: {actual_page_id}")
 
         reg_prop = props.get("Registrikood")
 
@@ -680,9 +683,12 @@ def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, 
         logging.info(f"Found Registrikood: {regcode}")
 
         # Check if a company with this registry code already exists (on a different page)
-        # Exclude the current page from the search
-        existing_page = notion.query_by_regcode(regcode, exclude_page_id=page_id)
+        # Exclude the current page from the search - use actual_page_id from Notion for consistency
+        logging.debug(f"Checking for duplicate registrikood {regcode}, excluding page_id: {actual_page_id}")
+        existing_page = notion.query_by_regcode(regcode, exclude_page_id=actual_page_id)
         if existing_page:
+            existing_page_id = existing_page.get("id")
+            logging.warning(f"Found duplicate: existing page_id={existing_page_id}, current page_id={page_id}")
             # Company with this registry code already exists on another page
             existing_props = existing_page.get("properties", {})
             nimi_prop = existing_props.get("Nimi", {})
