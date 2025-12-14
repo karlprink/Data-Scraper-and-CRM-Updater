@@ -43,8 +43,16 @@ class NotionClient:
         r.raise_for_status()
         return r.json()
 
-    def query_by_regcode(self, regcode: str):
-        """Searches for a page by registry code."""
+    def query_by_regcode(self, regcode: str, exclude_page_id: str = None):
+        """Searches for a page by registry code.
+        
+        Args:
+            regcode: The registry code to search for
+            exclude_page_id: Optional page ID to exclude from results (e.g., current page)
+        
+        Returns:
+            The first matching page (excluding exclude_page_id if provided), or None
+        """
         url = f"https://api.notion.com/v1/databases/{self.database_id}/query"
 
         payload = {
@@ -54,9 +62,21 @@ class NotionClient:
         r = requests.post(url, headers=self.headers, json=payload)
         r.raise_for_status()
         res = r.json()
-        if res.get("results"):
-            return res["results"][0]
-        return None
+        results = res.get("results", [])
+        
+        if not results:
+            return None
+        
+        # If exclude_page_id is provided, filter it out
+        if exclude_page_id:
+            for page in results:
+                if page.get("id") != exclude_page_id:
+                    return page
+            # All results were the excluded page, so no other page exists
+            return None
+        
+        # Return first result if no exclusion needed
+        return results[0]
 
     def query_database(self, filter_dict: dict):
         """Queries the database with a custom filter."""

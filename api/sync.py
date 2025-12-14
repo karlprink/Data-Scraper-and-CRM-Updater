@@ -680,8 +680,9 @@ def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, 
         logging.info(f"Found Registrikood: {regcode}")
 
         # Check if a company with this registry code already exists (on a different page)
-        existing_page = notion.query_by_regcode(regcode)
-        if existing_page and existing_page.get("id") != page_id:
+        # Exclude the current page from the search
+        existing_page = notion.query_by_regcode(regcode, exclude_page_id=page_id)
+        if existing_page:
             # Company with this registry code already exists on another page
             existing_props = existing_page.get("properties", {})
             nimi_prop = existing_props.get("Nimi", {})
