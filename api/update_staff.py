@@ -14,7 +14,7 @@ from .staff_update_services import (
     normalize_website_url,
     fetch_staff_data,
     get_database_properties,
-    create_staff_pages,
+    sync_staff_data,
     render_error_response,
     render_warning_response,
     render_success_response,
@@ -99,14 +99,14 @@ def update_staff():
         page_properties = get_database_properties(notion)
 
         # Create pages for all staff members
-        created_count, replaced_count, failed_count, errors = create_staff_pages(
+        created_count, updated_count, failed_count, errors = sync_staff_data(
             notion, staff_data, page_id, database_id, page_properties
         )
 
         # Prepare result message
         staff_found_count = len(staff_data)
         status_text, status_class, message, debug_info = prepare_result_message(
-            created_count, replaced_count, failed_count, staff_found_count, errors
+            created_count, updated_count, failed_count, staff_found_count, errors
         )
 
         # Render success response
