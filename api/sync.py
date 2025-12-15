@@ -423,7 +423,7 @@ def load_company_data(regcode: str, config: Dict[str, Any]) -> Dict[str, Any]:
     if not regcode or not str(regcode).isdigit():
         return {
             "status": "error",
-            "message": "Registrikood puudub või sisaldab mittenumbrilisi märke (peab olema number)."
+            "message": "Registrikood puudub või sisaldab mittenumbrilisi märke (peab olema number).",
         }
 
     try:
@@ -435,7 +435,7 @@ def load_company_data(regcode: str, config: Dict[str, Any]) -> Dict[str, Any]:
     if not company:
         return {
             "status": "error",
-            "message": f"Ettevõtet registrikoodiga {regcode} ei leitud Äriregistri andmetest (JSON)."
+            "message": f"Ettevõtet registrikoodiga {regcode} ei leitud Äriregistri andmetest (JSON).",
         }
 
     company_name = clean_value(company.get("nimi"))
@@ -452,7 +452,7 @@ def load_company_data(regcode: str, config: Dict[str, Any]) -> Dict[str, Any]:
             "empty_fields": empty_fields,
             "company_name": company_name,
         },
-        "message": f"Andmed leitud: {company_name} ({regcode})."
+        "message": f"Andmed leitud: {company_name} ({regcode}).",
     }
 
 
@@ -503,7 +503,9 @@ def process_company_sync(
             action = "Edukalt loodud"
 
         status = "success"
-        message = f"✅ {action}: {company_name} ({regcode}). Kirje sünkroniseeriti Notioni."
+        message = (
+            f"✅ {action}: {company_name} ({regcode}). Kirje sünkroniseeriti Notioni."
+        )
 
         if empty_fields:
             status = "warning"
@@ -520,12 +522,12 @@ def process_company_sync(
 
         return {
             "status": "error",
-            "message": f"❌ Notion API viga ({e.response.status_code}): {error_details}"
+            "message": f"❌ Notion API viga ({e.response.status_code}): {error_details}",
         }
     except Exception as e:
         return {
             "status": "error",
-            "message": f"❌ Üldine sünkroniseerimise viga: {type(e).__name__}: {e}"
+            "message": f"❌ Üldine sünkroniseerimise viga: {type(e).__name__}: {e}",
         }
 
 
@@ -535,17 +537,17 @@ def process_company_sync(
 def _is_placeholder_value(prop_value: Any, prop_type: str) -> bool:
     """
     Checks if a Notion property value is a placeholder (e.g., "Veebilehte ei leitud.").
-    
+
     Args:
         prop_value: The property value from Notion
         prop_type: The type of the property (e.g., "url", "email", "phone_number")
-        
+
     Returns:
         True if the value is a placeholder, False otherwise
     """
     if prop_value is None:
         return True
-    
+
     # Define placeholder values
     placeholders = {
         "E-maili ei leitud.",
@@ -553,7 +555,7 @@ def _is_placeholder_value(prop_value: Any, prop_type: str) -> bool:
         "Veebilehte ei leitud.",
         "LinkedIn-i ei leitud.",
     }
-    
+
     # Extract the actual value based on property type
     if prop_type == "url":
         value = prop_value if isinstance(prop_value, str) else None
@@ -563,29 +565,29 @@ def _is_placeholder_value(prop_value: Any, prop_type: str) -> bool:
         value = prop_value if isinstance(prop_value, str) else None
     else:
         return False
-    
+
     return value in placeholders if value else True
 
 
 def _get_property_value(props: Dict[str, Any], field_name: str) -> Tuple[Any, str]:
     """
     Extracts the value and type of a Notion property.
-    
+
     Args:
         props: The properties dictionary from a Notion page
         field_name: The name of the property to extract
-        
+
     Returns:
         Tuple of (value, property_type) or (None, None) if not found
     """
     prop = props.get(field_name)
     if not prop:
         return None, None
-    
+
     prop_type = prop.get("type")
     if not prop_type:
         return None, None
-    
+
     if prop_type == "url":
         return prop.get("url"), "url"
     elif prop_type == "email":
@@ -597,7 +599,7 @@ def _get_property_value(props: Dict[str, Any], field_name: str) -> Tuple[Any, st
         if rich_text:
             return rich_text[0].get("text", {}).get("content"), "rich_text"
         return None, "rich_text"
-    
+
     return None, prop_type
 
 
@@ -639,7 +641,9 @@ def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, 
         actual_page_id = page.get("id", page_id)
         props = page.get("properties", {})
         logging.info("Edukalt hankitud lehe omadused Notionist.")
-        logging.debug(f"Page ID from parameter: {page_id}, Page ID from Notion: {actual_page_id}")
+        logging.debug(
+            f"Page ID from parameter: {page_id}, Page ID from Notion: {actual_page_id}"
+        )
 
         reg_prop = props.get("Registrikood")
 
@@ -672,7 +676,9 @@ def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, 
                     regcode = "".join(ch for ch in content if ch.isdigit())
 
         if not regcode:
-            error_msg = "'Registrikood' väärtus on Notioni lehel tühi või vales formaadis."
+            error_msg = (
+                "'Registrikood' väärtus on Notioni lehel tühi või vales formaadis."
+            )
             logging.warning(error_msg)
             return {
                 "success": False,
@@ -684,30 +690,38 @@ def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, 
 
         # Check if a company with this registry code already exists (on a different page)
         # Exclude the current page from the search - use actual_page_id from Notion for consistency
-        logging.debug(f"Checking for duplicate registrikood {regcode}, excluding page_id: {actual_page_id}")
+        logging.debug(
+            f"Checking for duplicate registrikood {regcode}, excluding page_id: {actual_page_id}"
+        )
         existing_page = notion.query_by_regcode(regcode, exclude_page_id=actual_page_id)
         if existing_page:
             existing_page_id = existing_page.get("id")
-            logging.warning(f"Found duplicate: existing page_id={existing_page_id}, current page_id={page_id}")
+            logging.warning(
+                f"Found duplicate: existing page_id={existing_page_id}, current page_id={page_id}"
+            )
             # Company with this registry code already exists on another page
             existing_props = existing_page.get("properties", {})
             nimi_prop = existing_props.get("Nimi", {})
             company_name = ""
-            
+
             # Extract company name from existing page
             if nimi_prop:
                 prop_type = nimi_prop.get("type")
                 if prop_type == "title":
                     title_array = nimi_prop.get("title", [])
                     if title_array and len(title_array) > 0:
-                        company_name = clean_value(title_array[0].get("text", {}).get("content", ""))
-            
+                        company_name = clean_value(
+                            title_array[0].get("text", {}).get("content", "")
+                        )
+
             # Create error message in Estonian
             if company_name:
                 error_msg = f"Ettevõte registrikoodiga {regcode} ({company_name}) on juba olemas Notionis."
             else:
-                error_msg = f"Ettevõte registrikoodiga {regcode} on juba olemas Notionis."
-            
+                error_msg = (
+                    f"Ettevõte registrikoodiga {regcode} on juba olemas Notionis."
+                )
+
             logging.warning(error_msg)
             return {
                 "success": False,
@@ -771,21 +785,27 @@ def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, 
     # This preserves manually added content
     filtered_properties = {}
     fields_to_check = ["E-post", "Tel. nr", "Veebileht", "LinkedIn"]
-    
+
     for field_name in properties.keys():
         if field_name in fields_to_check:
             # Get existing value from Notion page
             existing_value, prop_type = _get_property_value(props, field_name)
-            
+
             # If field doesn't exist yet (None, None), or is empty/placeholder, update it
-            if existing_value is None or _is_placeholder_value(existing_value, prop_type):
+            if existing_value is None or _is_placeholder_value(
+                existing_value, prop_type
+            ):
                 filtered_properties[field_name] = properties[field_name]
                 if existing_value is None:
                     logging.debug(f"Will update {field_name} (field is empty)")
                 else:
-                    logging.debug(f"Will update {field_name} (contains placeholder: {existing_value})")
+                    logging.debug(
+                        f"Will update {field_name} (contains placeholder: {existing_value})"
+                    )
             else:
-                logging.info(f"Skipping {field_name} - contains manually added content: {existing_value}")
+                logging.info(
+                    f"Skipping {field_name} - contains manually added content: {existing_value}"
+                )
         else:
             # For other fields (like Nimi, Registrikood, etc.), always update
             filtered_properties[field_name] = properties[field_name]

@@ -50,14 +50,14 @@ class NotionClient:
             return ""
         # Remove hyphens and convert to lowercase for comparison
         return page_id.replace("-", "").lower()
-    
+
     def query_by_regcode(self, regcode: str, exclude_page_id: str = None):
         """Searches for a page by registry code.
-        
+
         Args:
             regcode: The registry code to search for
             exclude_page_id: Optional page ID to exclude from results (e.g., current page)
-        
+
         Returns:
             The first matching page (excluding exclude_page_id if provided), or None
         """
@@ -70,45 +70,53 @@ class NotionClient:
         all_results = []
         has_more = True
         next_cursor = None
-        
+
         # Handle pagination to get all results
         while has_more:
             if next_cursor:
                 payload["start_cursor"] = next_cursor
-            
+
             r = requests.post(url, headers=self.headers, json=payload)
             r.raise_for_status()
             res = r.json()
-            
+
             page_results = res.get("results", [])
             all_results.extend(page_results)
-            
+
             has_more = res.get("has_more", False)
             next_cursor = res.get("next_cursor")
-        
+
         if not all_results:
             return None
-        
+
         # Normalize exclude_page_id for comparison
         exclude_id_normalized = None
         if exclude_page_id:
             exclude_id_normalized = self._normalize_page_id(exclude_page_id)
             logging.debug(f"Excluding page_id (normalized): {exclude_id_normalized}")
-        
+
         # If exclude_page_id is provided, filter it out
         if exclude_id_normalized:
-            logging.debug(f"Found {len(all_results)} pages with registrikood, checking for duplicates (excluding current page)")
+            logging.debug(
+                f"Found {len(all_results)} pages with registrikood, checking for duplicates (excluding current page)"
+            )
             for page in all_results:
                 page_id = page.get("id", "")
                 page_id_normalized = self._normalize_page_id(page_id)
-                logging.debug(f"Comparing: page_id={page_id}, normalized={page_id_normalized}, exclude={exclude_id_normalized}, match={page_id_normalized == exclude_id_normalized}")
+                logging.debug(
+                    f"Comparing: page_id={page_id}, normalized={page_id_normalized}, exclude={exclude_id_normalized}, match={page_id_normalized == exclude_id_normalized}"
+                )
                 if page_id_normalized != exclude_id_normalized:
-                    logging.debug(f"Found different page with same registrikood: {page_id}")
+                    logging.debug(
+                        f"Found different page with same registrikood: {page_id}"
+                    )
                     return page
             # All results were the excluded page, so no other page exists
-            logging.debug(f"All {len(all_results)} results matched the excluded page_id, no duplicate found")
+            logging.debug(
+                f"All {len(all_results)} results matched the excluded page_id, no duplicate found"
+            )
             return None
-        
+
         # Return first result if no exclusion needed
         return all_results[0]
 

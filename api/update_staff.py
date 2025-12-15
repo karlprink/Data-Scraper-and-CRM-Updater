@@ -67,7 +67,7 @@ def update_staff():
                 status="Viga",
                 message="Kriitiline viga: Nõutud parameeter 'websiteUrl' puudub. Palun sisesta ettevõtte veebilehe URL.",
                 debug_info='Näide: {"websiteUrl": "https://example.com"}',
-                status_code=400
+                status_code=400,
             )
 
         # Normalize website URL
@@ -89,7 +89,7 @@ def update_staff():
             return render_warning_response(
                 message="⚠️ Veebilehelt ei leitud kontaktisikute infot. Veebileht ei pruugi sisaldada kontaktinfot määratud rollide jaoks (Tegevjuht, Personalijuht, Turundusjuht, Müügijuht või Üldine kontakt).",
                 notion_url=notion_url,
-                debug_info=f"Veebilehe URL: {website_url}"
+                debug_info=f"Veebilehe URL: {website_url}",
             )
 
         # Initialize Notion client

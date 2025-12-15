@@ -21,8 +21,10 @@ def validate_config() -> Tuple[str, str]:
     """
     NOTION_API_KEY_CONTACTS = os.getenv("NOTION_API_KEY_CONTACTS")
     NOTION_DATABASE_ID_CONTACTS = os.getenv("NOTION_DATABASE_ID_CONTACTS")
-    
+
     if not all([NOTION_API_KEY_CONTACTS, NOTION_DATABASE_ID_CONTACTS]):
-        raise ValueError("Puudub konfiguratsioon (NOTION_API_KEY_CONTACTS, NOTION_DATABASE_ID_CONTACTS)")
-    
+        raise ValueError(
+            "Puudub konfiguratsioon (NOTION_API_KEY_CONTACTS, NOTION_DATABASE_ID_CONTACTS)"
+        )
+
     return NOTION_API_KEY_CONTACTS, NOTION_DATABASE_ID_CONTACTS

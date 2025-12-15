@@ -19,7 +19,6 @@ AI_MODEL = config["google"]["ai_model"]
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 
-
 try:
     # Initialize the Gemini model
     model = genai.GenerativeModel(AI_MODEL)

@@ -77,7 +77,9 @@ def load_json(url: str, target_code: str) -> Optional[Dict[str, Any]]:
     if os.path.exists(result_cache_file):
         file_mod_time = os.path.getmtime(result_cache_file)
         if (time.time() - file_mod_time) < CACHE_EXPIRATION.total_seconds():
-            print(f"VAHEMÄLU TABAMUS: Leitud andmed registrikoodiga {target_code} vahemälust.")
+            print(
+                f"VAHEMÄLU TABAMUS: Leitud andmed registrikoodiga {target_code} vahemälust."
+            )
             with open(result_cache_file, "r", encoding="utf-8") as f:
                 return json.load(f)
 
@@ -105,18 +107,24 @@ def load_json(url: str, target_code: str) -> Optional[Dict[str, Any]]:
         # Assuming the JSON file is the first (and only) file in the ZIP
         json_filename = z.namelist()[0]
         with z.open(json_filename) as f:
-            print(f"JSON-i voogedastus ZIP-ist ({json_filename}) ja otsin {target_code}...")
+            print(
+                f"JSON-i voogedastus ZIP-ist ({json_filename}) ja otsin {target_code}..."
+            )
 
             try:
                 for obj in ijson.items(f, "item"):
                     # The 'ariregistri_kood' is the registry code in the JSON structure
                     if str(obj.get("ariregistri_kood")) == str(target_code):
-                        print(f"✅ Ettevõte {target_code} leitud, salvestan tulemuse vahemällu.")
+                        print(
+                            f"✅ Ettevõte {target_code} leitud, salvestan tulemuse vahemällu."
+                        )
                         with open(result_cache_file, "w", encoding="utf-8") as out:
                             json.dump(obj, out, ensure_ascii=False, indent=2)
                         return obj
             except ijson.common.IncompleteJSONError:
-                print("Hoiatus: JSON-i parsimine lõppes enneaegselt (võimalik ZIP faili viga).")
+                print(
+                    "Hoiatus: JSON-i parsimine lõppes enneaegselt (võimalik ZIP faili viga)."
+                )
 
     print(f"⚠️ Ettevõtet registrikoodiga {target_code} ei leitud andmestikust.")
     return None
