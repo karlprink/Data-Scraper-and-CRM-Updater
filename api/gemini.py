@@ -236,8 +236,8 @@ def run_full_staff_search(base_url):
                         and isinstance(item["email"], str)
                     ):
                         # Assuming the anti-bot technique reverses the email, e.g., "ee.tnak_tsim_oin" -> "nio_mist_kante.ee"
-                        if item["email"].startswith("ee.") or item["email"].endswith(
-                            ".ee"
+                        if item["email"].startswith("ee.") or item["email"].startswith(
+                            "moc."
                         ):
                             # This specific check for "ee." seems tailored to a local/specific reversal pattern.
                             # A more general reversal check is:
