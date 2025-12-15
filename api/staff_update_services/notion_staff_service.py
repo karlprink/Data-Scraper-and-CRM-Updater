@@ -4,6 +4,7 @@ Notion API operations for staff/contact person management.
 
 import requests
 from typing import Dict, Any, List, Tuple, Optional
+from datetime import datetime
 from ..clients.notion_client import NotionClient
 import logging
 
@@ -179,21 +180,21 @@ def build_notion_properties(
 
 
 def sync_staff_data(
-    notion: NotionClient,
-    staff_data: List[Dict[str, Any]],
-    page_id: Optional[str],
-    database_id: str,
-    page_properties: Optional[Dict[str, Any]],
+        notion: NotionClient,
+        staff_data: List[Dict[str, Any]],
+        page_id: Optional[str],
+        database_id: str,
+        page_properties: Optional[Dict[str, Any]],
 ) -> Tuple[int, int, int, List[str]]:
     """
     Synchronizes staff members: finds existing by (Name, Role) to update,
-    otherwise creates a new page.
+    otherwise creates a new page, adding a date stamp to the role of new contacts.
     """
     created_count = 0
     updated_count = 0
     failed_count = 0
     errors = []
-
+    current_date_est = datetime.now().strftime("%d.%m.%Y")
 
     for staff_member in staff_data:
         person_name = staff_member.get("name")
@@ -209,15 +210,25 @@ def sync_staff_data(
                 notion, person_name, person_role, page_id
             )
 
-            # Map Gemini staff data to Notion properties (Flat format)
-            properties_data = map_staff_to_properties(staff_member, page_id)
+            current_staff_member_data = staff_member.copy()
+
+            if not existing_page:
+                new_role = f"{person_role} (Uuendatud {current_date_est})"
+
+                current_staff_member_data["role"] = new_role
+
+                logging.info(f"New contact detected: {person_name}. Role adjusted for creation: {new_role}")
+
+            # Map staff data to Notion properties (Flat format)
+            properties_data = map_staff_to_properties(current_staff_member_data, page_id)
 
             # Convert properties to Notion API format
             notion_properties = build_notion_properties(properties_data, page_properties)
 
             if not notion_properties:
                 failed_count += 1
-                errors.append(f"Väljade kaardistamise viga: Andmeid ei saanud vormindada ({person_name}, {person_role})")
+                errors.append(
+                    f"Väljade kaardistamise viga: Andmeid ei saanud vormindada ({person_name}, {person_role})")
                 continue
 
             if existing_page:
@@ -232,7 +243,7 @@ def sync_staff_data(
                 }
                 notion.create_page(full_payload)
                 created_count += 1
-                logging.info(f"Created new contact: {person_name} ({person_role})")
+                logging.info(f"Created new contact: {person_name} ({person_role}) with timestamped role.")
 
         except requests.HTTPError as e:
             error_details = e.response.json().get("message", str(e.response.text))
