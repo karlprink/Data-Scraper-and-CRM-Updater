@@ -51,13 +51,13 @@ def find_staff_page_by_name_and_role(
 
         # 1. Filter by person's name (Property: Nimi)
         if name:
-             # Nimi on Rich Text: Eeldab täpset vastet
-             filters.append({"property": "Nimi", "rich_text": {"equals": name}})
+            # Nimi on Rich Text: Eeldab täpset vastet
+            filters.append({"property": "Nimi", "rich_text": {"equals": name}})
 
         # 2. Filter by role (Property: Name/Title)
         if role:
-             # Name on Title: Eeldab täpset vastet
-             filters.append({"property": "Name", "title": {"equals": role}})
+            # Name on Title: Eeldab täpset vastet
+            filters.append({"property": "Name", "title": {"equals": role}})
 
         # 3. Filter by company relation if provided (Property: Ettevõte)
         if company_page_id:
@@ -65,7 +65,7 @@ def find_staff_page_by_name_and_role(
                 {"property": "Ettevõte", "relation": {"contains": company_page_id}}
             )
 
-        if len(filters) < 2: # Nimi ja Roll on kriitilised
+        if len(filters) < 2:  # Nimi ja Roll on kriitilised
             return None
 
         filter_dict = {"and": filters}
@@ -76,7 +76,9 @@ def find_staff_page_by_name_and_role(
         # Filter out archived pages and return the first active match
         for page in existing_pages:
             if not page.get("archived", False):
-                logging.info(f"Existing contact found: {name} ({role}), Page ID: {page.get('id')}")
+                logging.info(
+                    f"Existing contact found: {name} ({role}), Page ID: {page.get('id')}"
+                )
                 return page
 
         return None
@@ -155,9 +157,7 @@ def build_notion_properties(
 
         # Handle Phone Number
         elif prop_name == "Telefoninumber" or prop_name == "Phone":
-            notion_properties[prop_name] = {
-                "phone_number": prop_value
-            }
+            notion_properties[prop_name] = {"phone_number": prop_value}
 
         # Handle Relation (Ettevõte)
         elif prop_name == "Ettevõte" or prop_name == "Company":
@@ -165,10 +165,11 @@ def build_notion_properties(
             if isinstance(prop_value, str):
                 notion_properties[prop_name] = {"relation": [{"id": prop_value}]}
             elif isinstance(prop_value, list):
-                 relation_list = [{"id": item} for item in prop_value if isinstance(item, str)]
-                 if relation_list:
-                     notion_properties[prop_name] = {"relation": relation_list}
-
+                relation_list = [
+                    {"id": item} for item in prop_value if isinstance(item, str)
+                ]
+                if relation_list:
+                    notion_properties[prop_name] = {"relation": relation_list}
 
         # Handle Rich Text (for any other text fields)
         elif isinstance(prop_value, str):
@@ -180,20 +181,21 @@ def build_notion_properties(
 
 
 def sync_staff_data(
-        notion: NotionClient,
-        staff_data: List[Dict[str, Any]],
-        page_id: Optional[str],
-        database_id: str,
-        page_properties: Optional[Dict[str, Any]],
+    notion: NotionClient,
+    staff_data: List[Dict[str, Any]],
+    page_id: Optional[str],
+    database_id: str,
+    page_properties: Optional[Dict[str, Any]],
 ) -> Tuple[int, int, int, List[str]]:
     """
-    Synchronizes staff members: finds existing by (Name, Role) to update,
-    otherwise creates a new page, adding a date stamp to the role of new contacts.
+    Synchronizes staff members: finds existing by (Name, Role) to update ONLY IF data has changed,
+    otherwise creates a new page, adding a dynamic date stamp to the role of new contacts.
     """
     created_count = 0
     updated_count = 0
     failed_count = 0
     errors = []
+
     current_date_est = datetime.now().strftime("%d.%m.%Y")
 
     for staff_member in staff_data:
@@ -214,44 +216,110 @@ def sync_staff_data(
 
             if not existing_page:
                 new_role = f"{person_role} (Uuendatud {current_date_est})"
-
                 current_staff_member_data["role"] = new_role
 
-                logging.info(f"New contact detected: {person_name}. Role adjusted for creation: {new_role}")
-
-            # Map staff data to Notion properties (Flat format)
-            properties_data = map_staff_to_properties(current_staff_member_data, page_id)
-
-            # Convert properties to Notion API format
-            notion_properties = build_notion_properties(properties_data, page_properties)
+            properties_data = map_staff_to_properties(
+                current_staff_member_data, page_id
+            )
+            notion_properties = build_notion_properties(
+                properties_data, page_properties
+            )
 
             if not notion_properties:
                 failed_count += 1
                 errors.append(
-                    f"Väljade kaardistamise viga: Andmeid ei saanud vormindada ({person_name}, {person_role})")
+                    f"Väljade kaardistamise viga: Andmeid ei saanud vormindada ({person_name}, {person_role})"
+                )
                 continue
 
             if existing_page:
-                existing_page_id = existing_page.get("id")
-                notion.update_page(existing_page_id, notion_properties)
-                updated_count += 1
-                logging.info(f"Updated existing contact: {person_name} ({person_role})")
+                existing_flat_data = extract_notion_properties_for_comparison(
+                    existing_page
+                )
+                email_changed = properties_data.get("Email") != existing_flat_data.get(
+                    "Email"
+                )
+                phone_changed = properties_data.get(
+                    "Telefoninumber"
+                ) != existing_flat_data.get("Telefoninumber")
+
+                if email_changed or phone_changed:
+                    existing_page_id = existing_page.get("id")
+                    notion.update_page(existing_page_id, notion_properties)
+                    updated_count += 1
+                    logging.info(
+                        f"Updated existing contact (data changed): {person_name} ({person_role})"
+                    )
+                else:
+                    logging.info(
+                        f"Existing contact is up-to-date: {person_name} ({person_role}). Skipping update."
+                    )
             else:
+                # 3. LOO UUS: Ei leidnud
                 full_payload = {
                     "parent": {"database_id": database_id},
                     "properties": notion_properties,
                 }
                 notion.create_page(full_payload)
                 created_count += 1
-                logging.info(f"Created new contact: {person_name} ({person_role}) with timestamped role.")
+                logging.info(
+                    f"Created new contact: {person_name} ({person_role}) with timestamped role."
+                )
 
         except requests.HTTPError as e:
+            # ... (veakäsitlus jääb samaks)
             error_details = e.response.json().get("message", str(e.response.text))
             failed_count += 1
-            errors.append(f"{person_name} ({person_role}) Notion API viga: {error_details}")
+            errors.append(
+                f"{person_name} ({person_role}) Notion API viga: {error_details}"
+            )
 
         except Exception as e:
+            # ... (üldine veakäsitlus jääb samaks)
             failed_count += 1
-            errors.append(f"{person_name} ({person_role}) üldine viga: {type(e).__name__}: {str(e)}")
+            errors.append(
+                f"{person_name} ({person_role}) üldine viga: {type(e).__name__}: {str(e)}"
+            )
 
     return created_count, updated_count, failed_count, errors
+
+
+def extract_notion_properties_for_comparison(page: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Extracts key property values (flat format) from a Notion page object for comparison.
+    This helps in comparing existing data with newly scraped data.
+    """
+    properties = page.get("properties", {})
+    extracted = {}
+
+    # Extract Nimi (Rich Text)
+    nimi_prop = properties.get("Nimi", {})
+    if nimi_prop.get("type") == "rich_text" and nimi_prop.get("rich_text"):
+        # Kasutame esimest rich_text plokki
+        extracted["Nimi"] = nimi_prop["rich_text"][0].get("plain_text")
+    else:
+        extracted["Nimi"] = None
+
+    # Extract Name (Title - Role)
+    name_prop = properties.get("Name", {})
+    if name_prop.get("type") == "title" and name_prop.get("title"):
+        # Kasutame esimest title plokki
+        extracted["Name"] = name_prop["title"][0].get("plain_text")
+    else:
+        extracted["Name"] = None
+
+    # Extract Email
+    email_prop = properties.get("Email", {})
+    if email_prop.get("type") == "email":
+        extracted["Email"] = email_prop.get("email")
+    else:
+        extracted["Email"] = None
+
+    # Extract Telefoninumber (Phone Number)
+    phone_prop = properties.get("Telefoninumber", {})
+    if phone_prop.get("type") == "phone_number":
+        extracted["Telefoninumber"] = phone_prop.get("phone_number")
+    else:
+        extracted["Telefoninumber"] = None
+
+    return extracted
