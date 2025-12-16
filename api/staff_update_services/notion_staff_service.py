@@ -188,7 +188,7 @@ def sync_staff_data(
     page_properties: Optional[Dict[str, Any]],
 ) -> Tuple[int, int, int, List[str]]:
     """
-    Synchronizes staff members: finds existing by (Name, Role) to update ONLY IF data has changed,
+    Synchronizes staff members: finds existing by (Name, Company) to update ONLY IF data has changed,
     otherwise creates a new page, adding a dynamic date stamp to the role of new contacts.
     """
     created_count = 0
@@ -208,42 +208,37 @@ def sync_staff_data(
             continue
 
         try:
-            existing_page = find_staff_page_by_name_and_role(
-                notion, person_name, person_role, page_id
+            existing_page = find_staff_page_by_name_and_company(
+                notion, person_name, page_id
             )
 
             current_staff_member_data = staff_member.copy()
 
-            if not existing_page:
-                new_role = f"{person_role} (Uuendatud {current_date_est})"
-                current_staff_member_data["role"] = new_role
-
-            properties_data = map_staff_to_properties(
-                current_staff_member_data, page_id
-            )
-            notion_properties = build_notion_properties(
-                properties_data, page_properties
-            )
-
-            if not notion_properties:
-                failed_count += 1
-                errors.append(
-                    f"Väljade kaardistamise viga: Andmeid ei saanud vormindada ({person_name}, {person_role})"
-                )
-                continue
-
             if existing_page:
+
                 existing_flat_data = extract_notion_properties_for_comparison(
                     existing_page
                 )
-                email_changed = properties_data.get("Email") != existing_flat_data.get(
+
+                role_changed = current_staff_member_data.get(
+                    "role"
+                ) != existing_flat_data.get("Name")
+                email_changed = current_staff_member_data.get(
                     "Email"
-                )
-                phone_changed = properties_data.get(
+                ) != existing_flat_data.get("Email")
+                phone_changed = current_staff_member_data.get(
                     "Telefoninumber"
                 ) != existing_flat_data.get("Telefoninumber")
 
-                if email_changed or phone_changed:
+                if role_changed or email_changed or phone_changed:
+
+                    properties_data = map_staff_to_properties(
+                        current_staff_member_data, page_id
+                    )
+                    notion_properties = build_notion_properties(
+                        properties_data, page_properties
+                    )
+
                     existing_page_id = existing_page.get("id")
                     notion.update_page(existing_page_id, notion_properties)
                     updated_count += 1
@@ -254,7 +249,26 @@ def sync_staff_data(
                     logging.info(
                         f"Existing contact is up-to-date: {person_name} ({person_role}). Skipping update."
                     )
+
             else:
+
+                new_role = f"{person_role} (Lisatud {current_date_est})"
+                current_staff_member_data["role"] = new_role
+
+                properties_data = map_staff_to_properties(
+                    current_staff_member_data, page_id
+                )
+                notion_properties = build_notion_properties(
+                    properties_data, page_properties
+                )
+
+                if not notion_properties:
+                    failed_count += 1
+                    errors.append(
+                        f"Väljade kaardistamise viga: Andmeid ei saanud vormindada ({person_name}, {person_role})"
+                    )
+                    continue
+
                 full_payload = {
                     "parent": {"database_id": database_id},
                     "properties": notion_properties,
@@ -314,3 +328,53 @@ def extract_notion_properties_for_comparison(page: Dict[str, Any]) -> Dict[str, 
         extracted["Telefoninumber"] = None
 
     return extracted
+
+
+def find_staff_page_by_name_and_company(
+    notion: NotionClient, name: str, company_page_id: Optional[str]
+) -> Optional[Dict[str, Any]]:
+    """
+    Finds an existing staff page by the person's name and associated company.
+
+    Args:
+        notion: The NotionClient instance
+        name: The person's name (Value in 'Nimi' field)
+        company_page_id: The company page ID to filter by
+
+    Returns:
+        The existing page object, or None
+    """
+    try:
+        filters = []
+
+        if name:
+            filters.append({"property": "Nimi", "rich_text": {"equals": name}})
+
+        if company_page_id:
+            filters.append(
+                {"property": "Ettevõte", "relation": {"contains": company_page_id}}
+            )
+
+        if not filters:
+            return None
+
+        filter_dict = {"and": filters}
+
+        # Query the database
+        existing_pages = notion.query_database(filter_dict)
+
+        # Filter out archived pages and return the first active match
+        for page in existing_pages:
+            if not page.get("archived", False):
+                logging.info(
+                    f"Existing contact found by name: {name}, Page ID: {page.get('id')}"
+                )
+                return page
+
+        return None
+
+    except Exception as e:
+        logging.error(
+            f"Error querying Notion database for existing staff by name/company: {e}"
+        )
+        return None
