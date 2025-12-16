@@ -255,7 +255,6 @@ def sync_staff_data(
                         f"Existing contact is up-to-date: {person_name} ({person_role}). Skipping update."
                     )
             else:
-                # 3. LOO UUS: Ei leidnud
                 full_payload = {
                     "parent": {"database_id": database_id},
                     "properties": notion_properties,
@@ -267,7 +266,6 @@ def sync_staff_data(
                 )
 
         except requests.HTTPError as e:
-            # ... (veakäsitlus jääb samaks)
             error_details = e.response.json().get("message", str(e.response.text))
             failed_count += 1
             errors.append(
@@ -275,7 +273,6 @@ def sync_staff_data(
             )
 
         except Exception as e:
-            # ... (üldine veakäsitlus jääb samaks)
             failed_count += 1
             errors.append(
                 f"{person_name} ({person_role}) üldine viga: {type(e).__name__}: {str(e)}"
@@ -292,30 +289,24 @@ def extract_notion_properties_for_comparison(page: Dict[str, Any]) -> Dict[str, 
     properties = page.get("properties", {})
     extracted = {}
 
-    # Extract Nimi (Rich Text)
     nimi_prop = properties.get("Nimi", {})
     if nimi_prop.get("type") == "rich_text" and nimi_prop.get("rich_text"):
-        # Kasutame esimest rich_text plokki
         extracted["Nimi"] = nimi_prop["rich_text"][0].get("plain_text")
     else:
         extracted["Nimi"] = None
 
-    # Extract Name (Title - Role)
     name_prop = properties.get("Name", {})
     if name_prop.get("type") == "title" and name_prop.get("title"):
-        # Kasutame esimest title plokki
         extracted["Name"] = name_prop["title"][0].get("plain_text")
     else:
         extracted["Name"] = None
 
-    # Extract Email
     email_prop = properties.get("Email", {})
     if email_prop.get("type") == "email":
         extracted["Email"] = email_prop.get("email")
     else:
         extracted["Email"] = None
 
-    # Extract Telefoninumber (Phone Number)
     phone_prop = properties.get("Telefoninumber", {})
     if phone_prop.get("type") == "phone_number":
         extracted["Telefoninumber"] = phone_prop.get("phone_number")
