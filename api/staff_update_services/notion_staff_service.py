@@ -186,7 +186,7 @@ def sync_staff_data(
     page_id: Optional[str],
     database_id: str,
     page_properties: Optional[Dict[str, Any]],
-) -> Tuple[int, int, int, List[str]]:
+) -> Tuple[int, int, int, int, List[str]]:
     """
     Synchronizes staff members: finds existing by (Name, Company) to update ONLY IF data has changed,
     otherwise creates a new page, adding a dynamic date stamp to the role of new contacts.
@@ -194,6 +194,7 @@ def sync_staff_data(
     created_count = 0
     updated_count = 0
     failed_count = 0
+    skipped_count = 0
     errors = []
 
     current_date_est = datetime.now().strftime("%d.%m.%Y")
@@ -224,10 +225,10 @@ def sync_staff_data(
                     "role"
                 ) != existing_flat_data.get("Name")
                 email_changed = current_staff_member_data.get(
-                    "Email"
+                    "email"
                 ) != existing_flat_data.get("Email")
                 phone_changed = current_staff_member_data.get(
-                    "Telefoninumber"
+                    "phone"
                 ) != existing_flat_data.get("Telefoninumber")
 
                 if role_changed or email_changed or phone_changed:
@@ -246,6 +247,7 @@ def sync_staff_data(
                         f"Updated existing contact (data changed): {person_name} ({person_role})"
                     )
                 else:
+                    skipped_count += 1
                     logging.info(
                         f"Existing contact is up-to-date: {person_name} ({person_role}). Skipping update."
                     )
@@ -292,7 +294,7 @@ def sync_staff_data(
                 f"{person_name} ({person_role}) üldine viga: {type(e).__name__}: {str(e)}"
             )
 
-    return created_count, updated_count, failed_count, errors
+    return created_count, updated_count, failed_count, skipped_count, errors
 
 
 def extract_notion_properties_for_comparison(page: Dict[str, Any]) -> Dict[str, Any]:
@@ -360,10 +362,8 @@ def find_staff_page_by_name_and_company(
 
         filter_dict = {"and": filters}
 
-        # Query the database
         existing_pages = notion.query_database(filter_dict)
 
-        # Filter out archived pages and return the first active match
         for page in existing_pages:
             if not page.get("archived", False):
                 logging.info(

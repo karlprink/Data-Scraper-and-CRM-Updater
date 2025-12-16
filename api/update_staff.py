@@ -99,15 +99,15 @@ def update_staff():
         page_properties = get_database_properties(notion)
 
         # Create pages for all staff members
-        created_count, updated_count, failed_count, errors = sync_staff_data(
+        created_count, updated_count, failed_count, skipped_count, errors = sync_staff_data(
             notion, staff_data, page_id, database_id, page_properties
         )
 
         # Prepare result message
         staff_found_count = len(staff_data)
         status_text, status_class, message, debug_info = prepare_result_message(
-            created_count, updated_count, failed_count, staff_found_count, errors
-        )
+            created_count, updated_count, failed_count, skipped_count, staff_found_count, errors
+         )
 
         # Render success response
         return render_success_response(
