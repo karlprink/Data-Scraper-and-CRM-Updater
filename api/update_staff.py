@@ -103,7 +103,7 @@ def update_staff():
             notion, staff_data, page_id, database_id, page_properties
         )
 
-        # Prepare result message
+        # Prepare result messages
         status_text, status_class, message, debug_info = prepare_result_message(
             created_count, updated_count, failed_count, skipped_count, errors
         )
