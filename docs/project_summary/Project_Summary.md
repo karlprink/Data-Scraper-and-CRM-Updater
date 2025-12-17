@@ -62,3 +62,52 @@ The team has agreed to remain available to the client for minor maintenance and 
 
 * Changing minor configuration variables.
 * Addressing other simple tasks that do not require more than one hour per session.
+
+
+## 5. Individual remarks
+
+### Tuudur Jürgen Utt
+
+My main role in this team ended up being QA. I wrote most of the automated tests for this project, conducted usability testing and set up a good portion of the CI pipeline. I also did significant work on requirements engineering. A more detailed account can be found under the contribution report section of the wiki. My main takeaways from this project are as follows:
+
+- I should have been more proactive. Especially in the early parts on this project, when the team was disorganized, I should have stepped up to take charge of the chaos rather than wait for someone else to do so.
+- Good documentation in really important. My main complaint is that it was really difficult to figure out what the development side was up to and what/why changes had been made. This forced me to play catch-up for the majority of the last three months. I am sure that my own lack of proper documenting has caused similar issue for others.
+- Especially when working with new people, workflows and approach should really be established and agreed upon at the beginning of a project. People who are available at different times, are unclear on what they need to be doing, prioritize different things and work at drastically different paces (some are prototyping, while others try for more maintainable results) can make for a quite dysfunctional work environment.
+
+I am a hypercritical person though - the project went well in most aspects and I sincerely hope everyone else involved largely shares that sentiment.
+
+
+### Armin Liiv
+
+My personal contribution to the project covered several different phases, including requirements work, feature development, user experience improvements, and manual testing.
+
+At an early stage of the project, I contributed by defining and documenting a set of Non-Functional Requirements. These requirements were compiled into a dedicated wiki entry and helped clarify the overall expectations and constraints of the system from the beginning.
+
+During development, I worked on extending the auto-fill functionality by integrating the Google Custom Search JSON API into the Vercel backend to populate missing company website URLs in the Notion CRM. Although the solution technically worked, it was only partially reliable in practice, as many companies lack an official website or cannot be identified due to naming differences or limited search visibility. These limitations were identified and documented during implementation.
+
+I also implemented a user experience improvement that removed the previously used pop-up browser windows for auto-fill feedback. Successful operations now complete silently, while errors are displayed directly on the Notion page, resulting in a more seamless workflow for collaboration managers.
+
+I also carried out manual acceptance testing by executing all defined use cases manually, documenting pass/fail results in the project wiki, and fixing distinct issues identified during this process.
+
+
+### Karl Prink
+
+### Requirements & Project Management
+* Participated in client meetings to gather requirements and define the scope of the application.
+* Assisted with general project management to ensure team alignment and task tracking.
+
+### Design & Coding
+* **Core Functionality:** Developed the main application logic and data flow.
+* **API Integration:** Successfully integrated the Notion API to handle data synchronization.
+* **Data Processing:** Implemented the data reading and conversion logic for *e-äriregister’s* JSON data files.
+* **Database Architecture (Challenge):** Attempted to convert the data storage from JSON to a relational database. However, this implementation was evaluated and ultimately discarded due to the storage limitations of Vercel’s free hosting tier.
+
+### Testing
+* Wrote the first set of unit tests.
+* Performed continuous iterative testing during the development of the main functionality to ensure stability.
+
+### Documentation
+* Wrote wiki and did some documentation
+
+### Commits
+![Commits](/docs/Commits.png)
