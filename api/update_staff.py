@@ -104,10 +104,9 @@ def update_staff():
         )
 
         # Prepare result message
-        staff_found_count = len(staff_data)
         status_text, status_class, message, debug_info = prepare_result_message(
-            created_count, updated_count, failed_count, skipped_count, staff_found_count, errors
-         )
+            created_count, updated_count, failed_count, skipped_count, errors
+        )
 
         # Render success response
         return render_success_response(
