@@ -110,4 +110,4 @@ I also carried out manual acceptance testing by executing all defined use cases 
 * Wrote wiki and did some documentation
 
 ### Commits
-![Commits](/docs/Commits.png)
+![Commits](/docs/commits.png)
