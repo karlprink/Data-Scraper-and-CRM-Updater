@@ -8,7 +8,7 @@ def load_config() -> Dict[str, Any]:
     Returns:
         A dictionary containing 'notion','ariregister' and 'google' configuration
     """
-    google_ai_model = "gemini-1.5-flash-latest"
+    google_ai_model = "gemini-2.0-flash"
     notion_token = os.getenv("NOTION_API_KEY")
     notion_db = os.getenv("NOTION_DATABASE_ID")
     notion_api_version = os.getenv("NOTION_API_VERSION")
