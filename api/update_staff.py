@@ -103,11 +103,10 @@ def update_staff():
             notion, staff_data, page_id, database_id, page_properties
         )
 
-        # Prepare result message
-        staff_found_count = len(staff_data)
+        # Prepare result messages
         status_text, status_class, message, debug_info = prepare_result_message(
-            created_count, updated_count, failed_count, staff_found_count, errors
-         )
+            created_count, updated_count, failed_count, skipped_count, errors
+        )
 
         # Render success response
         return render_success_response(
