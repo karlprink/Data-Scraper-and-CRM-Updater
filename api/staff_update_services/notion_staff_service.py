@@ -3,6 +3,7 @@ Notion API operations for staff/contact person management.
 """
 
 import requests
+import re
 from typing import Dict, Any, List, Tuple, Optional
 from datetime import datetime
 from ..clients.notion_client import NotionClient
@@ -55,9 +56,9 @@ def find_staff_page_by_name_and_role(
             filters.append({"property": "Nimi", "rich_text": {"equals": name}})
 
         # 2. Filter by role (Property: Name/Title)
+        # Use contains since role may have tags like "(Lisatud ...)" or "(uuendatud ...)"
         if role:
-            # Name on Title: Eeldab täpset vastet
-            filters.append({"property": "Name", "title": {"equals": role}})
+            filters.append({"property": "Name", "title": {"contains": role}})
 
         # 3. Filter by company relation if provided (Property: Ettevõte)
         if company_page_id:
@@ -188,8 +189,10 @@ def sync_staff_data(
     page_properties: Optional[Dict[str, Any]],
 ) -> Tuple[int, int, int, int, List[str]]:
     """
-    Synchronizes staff members: finds existing by (Name, Company) to update ONLY IF data has changed,
-    otherwise creates a new page, adding a dynamic date stamp to the role of new contacts.
+    Synchronizes staff members with the following logic:
+    1. If Role name AND person's name is the same → update existing instance
+    2. If Role exists BUT name is different → create new instance with "uuendatud" tag, mark old as "AEGUNUD"
+    3. If role doesn't exist → just add it
     """
     created_count = 0
     updated_count = 0
@@ -209,21 +212,20 @@ def sync_staff_data(
             continue
 
         try:
-            existing_page = find_staff_page_by_name_and_company(
-                notion, person_name, page_id
+            # Step 1: Check if exact match exists (same name AND same role)
+            existing_page = find_staff_page_by_name_and_role(
+                notion, person_name, person_role, page_id
             )
 
             current_staff_member_data = staff_member.copy()
 
             if existing_page:
-
+                # Case 1: Same name AND same role → UPDATE existing instance
                 existing_flat_data = extract_notion_properties_for_comparison(
                     existing_page
                 )
 
-                role_changed = current_staff_member_data.get(
-                    "role"
-                ) != existing_flat_data.get("Name")
+                # Check if any data has changed (email, phone)
                 email_changed = current_staff_member_data.get(
                     "email"
                 ) != existing_flat_data.get("Email")
@@ -231,8 +233,7 @@ def sync_staff_data(
                     "phone"
                 ) != existing_flat_data.get("Telefoninumber")
 
-                if role_changed or email_changed or phone_changed:
-
+                if email_changed or phone_changed:
                     properties_data = map_staff_to_properties(
                         current_staff_member_data, page_id
                     )
@@ -244,7 +245,7 @@ def sync_staff_data(
                     notion.update_page(existing_page_id, notion_properties)
                     updated_count += 1
                     logging.info(
-                        f"Updated existing contact (data changed): {person_name} ({person_role})"
+                        f"Updated existing contact (same name & role, data changed): {person_name} ({person_role})"
                     )
                 else:
                     skipped_count += 1
@@ -253,33 +254,95 @@ def sync_staff_data(
                     )
 
             else:
-
-                new_role = f"{person_role} (Lisatud {current_date_est})"
-                current_staff_member_data["role"] = new_role
-
-                properties_data = map_staff_to_properties(
-                    current_staff_member_data, page_id
-                )
-                notion_properties = build_notion_properties(
-                    properties_data, page_properties
+                # Step 2: Check if role exists with different name
+                existing_role_page = find_staff_page_by_role_only(
+                    notion, person_role, page_id, exclude_aegunud=True
                 )
 
-                if not notion_properties:
-                    failed_count += 1
-                    errors.append(
-                        f"Väljade kaardistamise viga: Andmeid ei saanud vormindada ({person_name}, {person_role})"
+                if existing_role_page:
+                    # Case 2: Role exists BUT name is different
+                    existing_flat_data = extract_notion_properties_for_comparison(
+                        existing_role_page
                     )
-                    continue
+                    existing_name = existing_flat_data.get("Nimi")
+                    existing_role = existing_flat_data.get("Name")
+                    
+                    if existing_name and existing_name != person_name:
+                        # Mark old instance as AEGUNUD
+                        old_page_id = existing_role_page.get("id")
+                        mark_page_as_aegunud(notion, old_page_id, existing_role or person_role)
+                        
+                        # Create new instance with "uuendatud" tag
+                        new_role = f"{person_role} (uuendatud {current_date_est})"
+                        current_staff_member_data["role"] = new_role
 
-                full_payload = {
-                    "parent": {"database_id": database_id},
-                    "properties": notion_properties,
-                }
-                notion.create_page(full_payload)
-                created_count += 1
-                logging.info(
-                    f"Created new contact: {person_name} ({person_role}) with timestamped role."
-                )
+                        properties_data = map_staff_to_properties(
+                            current_staff_member_data, page_id
+                        )
+                        notion_properties = build_notion_properties(
+                            properties_data, page_properties
+                        )
+
+                        if not notion_properties:
+                            failed_count += 1
+                            errors.append(
+                                f"Väljade kaardistamise viga: Andmeid ei saanud vormindada ({person_name}, {person_role})"
+                            )
+                            continue
+
+                        full_payload = {
+                            "parent": {"database_id": database_id},
+                            "properties": notion_properties,
+                        }
+                        notion.create_page(full_payload)
+                        created_count += 1
+                        logging.info(
+                            f"Created new contact (role existed with different name): {person_name} ({person_role}). Old instance marked as AEGUNUD."
+                        )
+                    else:
+                        # Role exists but name is same (shouldn't happen, but handle it)
+                        # This means we found a page but name matches - update it
+                        properties_data = map_staff_to_properties(
+                            current_staff_member_data, page_id
+                        )
+                        notion_properties = build_notion_properties(
+                            properties_data, page_properties
+                        )
+
+                        existing_page_id = existing_role_page.get("id")
+                        notion.update_page(existing_page_id, notion_properties)
+                        updated_count += 1
+                        logging.info(
+                            f"Updated existing contact: {person_name} ({person_role})"
+                        )
+                else:
+                    # Case 3: Role doesn't exist → just add it
+                    new_role = f"{person_role} (Lisatud {current_date_est})"
+                    current_staff_member_data["role"] = new_role
+
+                    properties_data = map_staff_to_properties(
+                        current_staff_member_data, page_id
+                    )
+                    notion_properties = build_notion_properties(
+                        properties_data, page_properties
+                    )
+
+                    if not notion_properties:
+                        failed_count += 1
+                        errors.append(
+                            f"Väljade kaardistamise viga: Andmeid ei saanud vormindada ({person_name}, {person_role})"
+                        )
+                        continue
+
+                    full_payload = {
+                        "parent": {"database_id": database_id},
+                        "properties": notion_properties,
+                    }
+                    notion.create_page(full_payload)
+                    created_count += 1
+                    logging.info(
+                        f"Created new contact (role doesn't exist): {person_name} ({person_role})"
+                    )
 
         except requests.HTTPError as e:
             error_details = e.response.json().get("message", str(e.response.text))
@@ -332,16 +395,22 @@ def extract_notion_properties_for_comparison(page: Dict[str, Any]) -> Dict[str, 
     return extracted
 
 
-def find_staff_page_by_name_and_company(
-    notion: NotionClient, name: str, company_page_id: Optional[str]
+def find_staff_page_by_role_only(
+    notion: NotionClient, 
+    role: str, 
+    company_page_id: Optional[str] = None,
+    exclude_aegunud: bool = True
 ) -> Optional[Dict[str, Any]]:
     """
-    Finds an existing staff page by the person's name and associated company.
+    Finds an existing staff page by role only (to check if role exists with different name).
+    Uses contains filter since roles may have tags like "(Lisatud ...)" or "(uuendatud ...)".
+    Excludes pages marked as AEGUNUD by default.
 
     Args:
         notion: The NotionClient instance
-        name: The person's name (Value in 'Nimi' field)
-        company_page_id: The company page ID to filter by
+        role: The role/title (Value in 'Name' field) - base role name without tags
+        company_page_id: Optional company page ID to filter by
+        exclude_aegunud: If True, excludes pages with "AEGUNUD" in the Name field
 
     Returns:
         The existing page object, or None
@@ -349,8 +418,9 @@ def find_staff_page_by_name_and_company(
     try:
         filters = []
 
-        if name:
-            filters.append({"property": "Nimi", "rich_text": {"equals": name}})
+        # Filter by role (Property: Name/Title) - use contains since role may have tags
+        if role:
+            filters.append({"property": "Name", "title": {"contains": role}})
 
         if company_page_id:
             filters.append(
@@ -360,21 +430,72 @@ def find_staff_page_by_name_and_company(
         if not filters:
             return None
 
-        filter_dict = {"and": filters}
+        filter_dict = {"and": filters} if len(filters) > 1 else filters[0]
 
         existing_pages = notion.query_database(filter_dict)
 
+        # Filter out archived pages and AEGUNUD pages
         for page in existing_pages:
-            if not page.get("archived", False):
-                logging.info(
-                    f"Existing contact found by name: {name}, Page ID: {page.get('id')}"
-                )
-                return page
+            if page.get("archived", False):
+                continue
+            
+            # Check if page is marked as AEGUNUD
+            if exclude_aegunud:
+                page_props = page.get("properties", {})
+                name_prop = page_props.get("Name", {})
+                if name_prop.get("type") == "title" and name_prop.get("title"):
+                    name_text = name_prop["title"][0].get("plain_text", "")
+                    if "AEGUNUD" in name_text.upper():
+                        continue
+            
+            logging.info(
+                f"Existing contact found by role: {role}, Page ID: {page.get('id')}"
+            )
+            return page
 
         return None
 
     except Exception as e:
         logging.error(
-            f"Error querying Notion database for existing staff by name/company: {e}"
+            f"Error querying Notion database for existing staff by role: {e}"
         )
         return None
+
+
+def mark_page_as_aegunud(notion: NotionClient, page_id: str, current_role: str) -> bool:
+    """
+    Marks a page as AEGUNUD by adding "AEGUNUD" tag to the Name field.
+
+    Args:
+        notion: The NotionClient instance
+        page_id: The page ID to mark
+        current_role: The current role text (to preserve it)
+
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        # Remove any existing tags and add AEGUNUD
+        # Extract base role (remove any existing tags like "AEGUNUD", "uuendatud", dates, etc.)
+        base_role = current_role
+        # Remove common tags and dates
+        for tag in ["AEGUNUD", "uuendatud", "Lisatud"]:
+            base_role = base_role.replace(tag, "").strip()
+        # Remove date patterns like (dd.mm.yyyy)
+        base_role = re.sub(r'\s*\([^)]*\)\s*', '', base_role).strip()
+        
+        # Add AEGUNUD tag
+        new_role = f"{base_role} AEGUNUD"
+        
+        notion_properties = {
+            "Name": {
+                "title": [{"text": {"content": new_role}}]
+            }
+        }
+        
+        notion.update_page(page_id, notion_properties)
+        logging.info(f"Marked page {page_id} as AEGUNUD")
+        return True
+    except Exception as e:
+        logging.error(f"Error marking page as AEGUNUD: {e}")
+        return False
