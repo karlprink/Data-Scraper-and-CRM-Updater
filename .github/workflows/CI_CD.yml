@@ -42,6 +42,7 @@ jobs:
 
   # 2. Job: Code Linting and Testing
   build_and_test:
+    if: always()
     name: Linting & Testing Python App
     runs-on: ubuntu-latest
     # Requires the 'security_and_format' job to succeed first

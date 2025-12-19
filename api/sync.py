@@ -766,7 +766,7 @@ def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, 
     # 3.1 If Website is missing, try finding it via Google CSE (first 10, scored)
     veeb_prop = properties.get("Veebileht", {})
     existing_url = veeb_prop.get("url")
-    if not existing_url:
+    if (not existing_url or existing_url == "Veebilehte ei leitud.") and not props.get("Veebileht", {}).get("url"):
         logging.info(
             "Veebileht puudub Äriregistri andmetes – proovime leida Google CSE abil."
         )

@@ -205,7 +205,7 @@ class TestUC1:
                 },
                 "E-post": {"email": "info@ideelabor.ee"},
                 "Kontaktisikud": {"people": []},
-                "LinkedIn": {"url": None},
+                "LinkedIn": {"url": "LinkedIn-i ei leitud."},
                 "Maakond": {"multi_select": [{"name": "Tartu maakond"}]},
                 "Nimi": {"title": [{"text": {"content": "OÜ Ideelabor"}}]},
                 "Põhitegevus": {
@@ -213,7 +213,7 @@ class TestUC1:
                 },
                 "Registrikood": {"number": 11043099},
                 "Tegevusvaldkond": {
-                    "rich_text": [{"text": {"content": "Info ja side"}}]
+                    "multi_select": [{"name": "58-63: Info ja side"}]
                 },
                 "Tel. nr": {"phone_number": "+372 56208082"},
                 "Veebileht": {"url": "https://ideelabor.ee"},
@@ -277,7 +277,7 @@ class TestUC1:
                         {
                             "type": "text",
                             "text": {
-                                "content": "Error: Viga: 'Registrikood' value is empty or in an invalid format on the Notion page."[
+                                "content": "Viga: Viga: 'Registrikood' väärtus on Notioni lehel tühi või vales formaadis."[
                                     :1900
                                 ]
                             },
@@ -330,7 +330,7 @@ class TestUC1:
                         {
                             "type": "text",
                             "text": {
-                                "content": "Error: Viga: Company with registry code 10 not found in JSON data."[
+                                "content": "Viga: Viga: Ettevõtet registrikoodiga 10 ei leitud JSON andmetest."[
                                     :1900
                                 ]
                             },
@@ -386,15 +386,15 @@ class TestUC1:
                 },
                 "Maakond": {"multi_select": [{"name": "Harju maakond"}]},
                 "E-post": {"email": "smaragda.sarana@gmail.com"},
-                "Tel. nr": {"phone_number": None},
-                "Veebileht": {"url": None},
-                "LinkedIn": {"url": None},
+                "Tel. nr": {"phone_number": "Telefoni numbrit ei leitud."},
+                "Veebileht": {"url": "Veebilehte ei leitud."},
+                "LinkedIn": {"url": "LinkedIn-i ei leitud."},
                 "Kontaktisikud": {"people": []},
                 "Põhitegevus": {
                     "rich_text": [{"text": {"content": "Programmeerimine"}}]
                 },
                 "Tegevusvaldkond": {
-                    "rich_text": [{"text": {"content": "Info ja side"}}]
+                    "multi_select": [{"name": "58-63: Info ja side"}]
                 },
             },
         )
@@ -465,6 +465,7 @@ class TestUC3:
         )  # We are using cached ariregister data, so ariregister should not be contacted.
 
         notion_client_instances[0].update_page_called.assert_called_with(
+            "UC3_main",
             {
                 "Aadress": {
                     "rich_text": [
@@ -475,9 +476,7 @@ class TestUC3:
                         }
                     ]
                 },
-                "E-post": {"email": "info@ideelabor.ee"},
-                "Kontaktisikud": {"people": ["TestPerson"]},
-                "LinkedIn": {"url": "TestSite"},
+                "Kontaktisikud": {"people": []},
                 "Maakond": {"multi_select": [{"name": "Tartu maakond"}]},
                 "Nimi": {"title": [{"text": {"content": "OÜ Ideelabor"}}]},
                 "Põhitegevus": {
@@ -485,14 +484,13 @@ class TestUC3:
                 },
                 "Registrikood": {"number": 11043099},
                 "Tegevusvaldkond": {
-                    "rich_text": [{"text": {"content": "Info ja side"}}]
-                },
-                "Tel. nr": {"phone_number": "+372 56208082"},
-                "Veebileht": {"url": "https://ideelabor.ee"},
+                    "multi_select": [{"name": "58-63: Info ja side"}]
+                }
             }
         )
         notion_client_instances[0].create_page_called.assert_not_called()
         notion_client_instances[1].update_page_called.assert_called_once_with(
+            "UC3_main",
             {
                 "Auto-fill Status": {
                     "rich_text": [
@@ -546,7 +544,7 @@ class TestUC3:
                         {
                             "type": "text",
                             "text": {
-                                "content": "Error: Viga: Company with registry code 99 not found in JSON data."[
+                                "content": "Viga: Viga: Ettevõtet registrikoodiga 99 ei leitud JSON andmetest."[
                                     :1900
                                 ]
                             },
@@ -620,9 +618,9 @@ class TestUC5:
                 },
                 "Maakond": {"multi_select": [{"name": "Harju maakond"}]},
                 "E-post": {"email": "konstantin.sadekov@gmail.com"},
-                "Tel. nr": {"phone_number": None},
-                "Veebileht": {"url": None},
-                "LinkedIn": {"url": None},
+                "Tel. nr": {"phone_number": "Telefoni numbrit ei leitud."},
+                "Veebileht": {"url": "Veebilehte ei leitud."},
+                "LinkedIn": {"url": "LinkedIn-i ei leitud."},
                 "Kontaktisikud": {"people": []},
                 "Põhitegevus": {
                     "rich_text": [
@@ -634,8 +632,8 @@ class TestUC5:
                     ]
                 },
                 "Tegevusvaldkond": {
-                    "rich_text": [
-                        {"text": {"content": "Kutse-, teadus- ja tehnikaalane tegevus"}}
+                    "multi_select": [
+                        {"name": "69-75: Kutse-; teadus- ja tehnikaalane tegevus"}
                     ]
                 },
             },
@@ -687,7 +685,7 @@ class TestUC5:
         )  # We are NOT using cached ariregister data, so ariregister should be contacted.
 
         notion_client_instances[0].update_page_called.assert_called_once_with(
-            "UC5_main",
+            "UC5_alt1",
             {
                 "Nimi": {"title": [{"text": {"content": "Accelerator OÜ"}}]},
                 "Registrikood": {"number": 16359677},
@@ -702,9 +700,9 @@ class TestUC5:
                 },
                 "Maakond": {"multi_select": [{"name": "Harju maakond"}]},
                 "E-post": {"email": "konstantin.sadekov@gmail.com"},
-                "Tel. nr": {"phone_number": None},
-                "Veebileht": {"url": None},
-                "LinkedIn": {"url": None},
+                "Tel. nr": {"phone_number": "Telefoni numbrit ei leitud."},
+                "Veebileht": {"url": "Veebilehte ei leitud."},
+                "LinkedIn": {"url": "LinkedIn-i ei leitud."},
                 "Kontaktisikud": {"people": []},
                 "Põhitegevus": {
                     "rich_text": [
@@ -716,15 +714,15 @@ class TestUC5:
                     ]
                 },
                 "Tegevusvaldkond": {
-                    "rich_text": [
-                        {"text": {"content": "Kutse-, teadus- ja tehnikaalane tegevus"}}
+                    "multi_select": [
+                        {"name": "69-75: Kutse-; teadus- ja tehnikaalane tegevus"}
                     ]
                 },
             },
         )
         notion_client_instances[0].create_page_called.assert_not_called()
         notion_client_instances[1].update_page_called.assert_called_once_with(
-            "UC5_main",
+            "UC5_alt1",
             {
                 "Auto-fill Status": {
                     "rich_text": [

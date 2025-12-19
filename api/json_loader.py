@@ -7,6 +7,7 @@ from datetime import timedelta
 from typing import Optional, Dict, Any
 
 import ijson
+from requests import HTTPError
 
 from .clients.ariregister_client import AriregisterClient
 
@@ -62,6 +63,7 @@ def load_json(url: str, target_code: str) -> Optional[Dict[str, Any]]:
     The function first checks the result cache for the specific company.
     If not found or expired, it checks the ZIP file cache.
     If the ZIP file cache is expired, it downloads a new one.
+    If downloading a new one fails, uses stale Cache and logs an error.
 
     Args:
         url: The URL to the ZIP file containing the JSON data.
@@ -88,17 +90,20 @@ def load_json(url: str, target_code: str) -> Optional[Dict[str, Any]]:
         time.time() - os.path.getmtime(CACHE_FILE_PATH)
     ) > CACHE_EXPIRATION.total_seconds():
         print(f"VAHEMÄLU PUUDUB: Laen alla uue ZIP faili: {url}")
-        headers = {"User-Agent": "Mozilla/5.0"}
+        try:
+            headers = {"User-Agent": "Mozilla/5.0"}
 
-        # Prevents loading the whole file into memory
-        ariregister_client = AriregisterClient()
-        with ariregister_client.get_csv(url.strip(), headers=headers, stream=True) as r:
-            r.raise_for_status()
-            os.makedirs(os.path.dirname(CACHE_FILE_PATH), exist_ok=True)
-            with open(CACHE_FILE_PATH, "wb") as f:
-                for chunk in r.iter_content(chunk_size=1024 * 1024):  # 1MB chunks
-                    f.write(chunk)
-        print("ZIP fail laetud alla ja salvestatud vahemällu.")
+            # Prevents loading the whole file into memory
+            ariregister_client = AriregisterClient()
+            with ariregister_client.get_csv(url.strip(), headers=headers, stream=True) as r:
+                r.raise_for_status()
+                os.makedirs(os.path.dirname(CACHE_FILE_PATH), exist_ok=True)
+                with open(CACHE_FILE_PATH, "wb") as f:
+                    for chunk in r.iter_content(chunk_size=1024 * 1024):  # 1MB chunks
+                        f.write(chunk)
+            print("ZIP fail laetud alla ja salvestatud vahemällu.")
+        except HTTPError as e:
+            print(f"ERROR: Allalaadimine ebaõnnestus, kasutan vananenud faili. {e}")
     else:
         print("Kasutan olemasolevat ZIP vahemälu faili.")
 

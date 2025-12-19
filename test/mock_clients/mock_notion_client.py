@@ -34,24 +34,24 @@ class MockNotionClient:
             return {
                 "properties": {
                     "Aadress": {None},  # This is a missing field that should be updated
-                    "E-post": {"email": "info@ideelabor.ee"},
+                    "E-post": {"type": "email", "email": "info@ideelabor.ee"},
                     "Kontaktisikud": {
                         "people": ["TestPerson"]
                     },  # This value should not be updated
                     "LinkedIn": {
-                        "url": "TestSite"
+                        "type": "url", "url": "TestSite"
                     },  # This value that should not be updated
                     "Maakond": {"multi_select": [{"name": "Tartu maakond"}]},
                     "Nimi": {"title": [{"text": {"content": "OÜ Ideelabor"}}]},
                     "Põhitegevus": {
-                        "rich_text": [{"text": {"content": "Programmeerimine"}}]
+                        "type": "rich_text", "rich_text": [{"text": {"content": "Programmeerimine"}}]
                     },
                     "Registrikood": {"type": "number", "number": 11043099},
                     "Tegevusvaldkond": {
-                        "rich_text": [{"text": {"content": "Info ja side"}}]
+                        "type": "rich_text", "rich_text": [{"text": {"content": "Info ja side"}}]
                     },
-                    "Tel. nr": {"phone_number": "+372 56208082"},
-                    "Veebileht": {"url": "https://ideelabor.ee"},
+                    "Tel. nr": {"type": "phone_number", "phone_number": "+372 56208082"},
+                    "Veebileht": {"type": "url", "url": "https://ideelabor.ee"},
                 }
             }
         elif page_id == "UC3_alt1":
@@ -69,16 +69,16 @@ class MockNotionClient:
                         ]
                     },
                     "Maakond": {"multi_select": [{"name": "Harju maakond"}]},
-                    "E-post": {"email": "smaragda.sarana@gmail.com"},
-                    "Tel. nr": {"phone_number": None},
-                    "Veebileht": {"url": None},
-                    "LinkedIn": {"url": None},
+                    "E-post": {"type": "email", "email": "smaragda.sarana@gmail.com"},
+                    "Tel. nr": {"type": "phone_number", "phone_number": None},
+                    "Veebileht": {"type": "url", "url": None},
+                    "LinkedIn": {"type": "url", "url": None},
                     "Kontaktisikud": {"people": []},
                     "Põhitegevus": {
-                        "rich_text": [{"text": {"content": "Programmeerimine"}}]
+                        "type": "rich_text", "rich_text": [{"text": {"content": "Programmeerimine"}}]
                     },
                     "Tegevusvaldkond": {
-                        "rich_text": [{"text": {"content": "Info ja side"}}]
+                        "type": "rich_text", "rich_text": [{"text": {"content": "Info ja side"}}]
                     },
                 }
             }
@@ -108,6 +108,6 @@ class MockNotionClient:
         self.update_page_called(page_id, properties)
         return {}
 
-    def query_by_regcode(self, regcode):
+    def query_by_regcode(self, regcode, exclude_page_id):
         self.query_by_regcode_called(regcode)
         return {}
