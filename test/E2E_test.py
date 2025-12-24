@@ -417,8 +417,30 @@ class TestUC1:
     # E2E tests for alternate flow c are not feasible, as we do not run our tests in vercel.
 
 
-# class TestUC2:
-# TODO: implement tests
+class TestUC2:
+    """
+    Actor:	                Collaboration manager
+    Goal:	                To automatically scrape a company's website for key staff and add them to the CRM as linked contacts.
+    Related user stories:	US9-US11, US13-US14
+    Trigger:	            Clicks "Update Staff" link.
+    Preconditions:	        1. "Companies" and "Contacts" databases exist and can be linked via a Notion Relation.
+                            2. The collaboration manager is on a company page.
+    """
+    def test_uc2_main(
+            self, monkeypatch, client, mock_env, mock_cache_env, mock_clients
+    ):
+        """
+        Flow:   -> 1. Manager clicks "Update Staff".
+                <- 2. System reads the Veebileht URL from the company's Notion page.
+                <- 3. System sends the website URL to the Gemini API with a prompt to find staff (name, role, email) and return them as JSON.
+                <- 4. Gemini API returns a JSON array of found contacts (e.g., [{"name": "Mari Maasikas", "role": "CEO", "email": "mari@firma.ee", "phone number": "+372 55523626"}]).
+                <- 5. System iterates the JSON array.
+                <- 6. For each contact, the system creates a new page in the "Contacts" database, populating their Name, Role, Phone Number and Email.
+                <- 7. System sets the "Company" relation field on the new contact page, linking it back to the company.
+                <- 8. The company's page in Notion updates to show the new contacts in its relation field.
+        """
+        response = client.get("/api/update-staff", query_string={"pageId": "UC2_main", "websiteUrl": "www.UC2_main.com"})
+
 
 
 class TestUC3:
@@ -732,6 +754,3 @@ class TestUC5:
             },
         )
         notion_client_instances[1].create_page_called.assert_not_called()
-
-
-# TODO: UC6 is yet to be implemented

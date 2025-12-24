@@ -5,6 +5,8 @@ import requests
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse  # Required for fixing links
+
+from .clients.gemini_client import GeminiClient
 from .config import load_config
 
 
@@ -27,6 +29,7 @@ except Exception as e:
     exit()
 
 company_website_client = CompanyWebsiteClient()
+gemini_client = GeminiClient(model)
 
 
 def get_website_text(url):
@@ -113,7 +116,7 @@ def find_contact_page_url(base_url):
         print(prompt)
 
         # Ask Gemini
-        response = model.generate_content(prompt)
+        response = gemini_client.generate_content(prompt)
         suggested_url = response.text.strip()
 
         if "NONE" in suggested_url or "http" not in suggested_url:
@@ -216,7 +219,7 @@ def run_full_staff_search(base_url):
 
     print("\nStep 3: Sending cleaned text to Gemini for analysis...")
     try:
-        response = model.generate_content(prompt)
+        response = gemini_client.generate_content(prompt)
 
         print("\n--- Response (Raw Content) ---")
         # Clean up the response to show only JSON
