@@ -133,7 +133,7 @@ def sync_staff_data(
         person_name = staff_member.get("name")
         person_role = staff_member.get("role")
 
-        if not person_name or not person_role:
+        if not person_role or (not person_name and person_role != "General Contact"):
             failed_count += 1
             errors.append(f"Puudulikud andmed: {staff_member}")
             continue
