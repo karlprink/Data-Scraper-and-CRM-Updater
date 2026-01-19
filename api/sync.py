@@ -254,16 +254,10 @@ def _build_properties_from_company(
     - Tegevusvaldkond (Industry Section): Uses the 2-digit EMTAK code to map
       to a broader section (EMTAK_MAP).
 
-    Args:
-        company: The cleaned company dictionary.
-        regcode: The company's registry code.
-        company_name: The company's name.
-
-    Returns:
-        A tuple containing:
-        - properties (Dict[str, Any]): The Notion properties payload.
-        - empty_fields (list): A list of Notion fields that were left empty.
-        - company_name (str): The company name.
+    @param company: The cleaned company dictionary.
+    @param regcode: The company's registry code.
+    @param company_name: The company's name.
+    @return: A tuple containing (properties, empty_fields, company_name).
     """
 
     yldandmed = company.get("yldandmed", {})
@@ -283,7 +277,6 @@ def _build_properties_from_company(
         if liik == "EMAIL":
             email_val = sisu
         elif liik in ("TEL", "MOB"):
-            # Prioritize the first phone number found
             if not tel_val:
                 tel_val = sisu
         elif liik == "WWW":
@@ -291,19 +284,18 @@ def _build_properties_from_company(
 
     # Extract address data
     aadressid = yldandmed.get("aadressid", [])
-    aadress_täis_val = (
+    aadress_full_val = (
         clean_value(aadressid[0].get("aadress_ads__ads_normaliseeritud_taisaadress"))
         if aadressid
         and aadressid[0].get("aadress_ads__ads_normaliseeritud_taisaadress")
         else None
     )
-    aadress_val = aadress_täis_val  # Use full address as the main address field
+    aadress_val = aadress_full_val
 
     # Extract county (Maakond)
     maakond_val_raw = None
-    if aadress_täis_val:
-        # Assumes county is the first part of the full address string
-        parts = aadress_täis_val.split(",")
+    if aadress_full_val:
+        parts = aadress_full_val.split(",")
         maakond_val_raw = parts[0].strip() if parts else None
 
     # Extract main activity (Põhitegevus)
@@ -312,8 +304,6 @@ def _build_properties_from_company(
         (ta for ta in tegevusalad if ta.get("on_pohitegevusala") is True), None
     )
 
-    # 1. Get detailed EMTAK code (e.g., '73111') and text (e.g., 'Reklaamiagentuuride tegevus')
-    # FIX APPLIED: Using 'emtak_kood' from JSON, as 'emtak_kood_tekstina' is often None/missing the raw code.
     emtak_kood_val = (
         clean_value(pohitegevusala.get("emtak_kood")) if pohitegevusala else None
     )
@@ -321,7 +311,7 @@ def _build_properties_from_company(
         clean_value(pohitegevusala.get("emtak_tekstina")) if pohitegevusala else None
     )
 
-    # 2. Use the 2-digit code to find the broader section (Tegevusvaldkond)
+    # Use the 2-digit code to find the broader section (Tegevusvaldkond)
     emtak_jaotis_val = get_emtak_section_text(emtak_kood_val)
 
     # --- Prepare Notion Properties and Track Empty Fields ---
@@ -333,7 +323,7 @@ def _build_properties_from_company(
         maakond_prop = {"multi_select": [{"name": maakond_val_raw}]}
     else:
         maakond_prop = {"multi_select": []}
-        empty_fields.append("Maakond")  # County
+        empty_fields.append("Maakond")
 
     # Prepare simple value Notion properties
     email_prop = {"email": email_val} if email_val else {"email": "E-maili ei leitud."}
@@ -380,31 +370,23 @@ def _build_properties_from_company(
         "Tel. nr": tel_prop,
         "Veebileht": veeb_prop,
         "LinkedIn": linkedin_prop,
-        "Kontaktisikud": {"people": yldandmed.get("kontaktisikud_list", [])},
         "Põhitegevus": {
             "rich_text": [{"text": {"content": emtak_detailne_tekst_val or ""}}]
         },
         "Tegevusvaldkond": tegevusvaldkond_prop,
     }
 
-    # NOTE: Set value to None instead of placeholder text to allow Notion to accept a true empty value if needed
-    # The original code used placeholders, I'm adjusting to use None for proper Notion handling of empty fields (URL, Email, Phone Number types)
-    # Re-checking the assignments to ensure Notion's required structure for empty fields is met:
-
-    # Simple properties must be explicitly set to None (or the specific property type's empty value)
+    # Ensure placeholders are explicitly set for Notion to accept the payload
     if not email_val:
-        properties["E-post"] = {"email": "E-maili ei leitud."}
+        properties["E-post"] = {"email": None}
     if not tel_val:
-        properties["Tel. nr"] = {"phone_number": "Telefoni numbrit ei leitud."}
+        properties["Tel. nr"] = {"phone_number": None}
     if not veeb_val:
-        properties["Veebileht"] = {"url": "Veebilehte ei leitud."}
+        properties["Veebileht"] = {"url": None}
     if not linkedin_val:
-        properties["LinkedIn"] = {"url": "LinkedIn-i ei leitud."}
+        properties["LinkedIn"] = {"url": None}
 
     return properties, empty_fields, company_name or ""
-
-
-# --- CLI/Interactive Mode Helper Functions ---
 
 
 def load_company_data(regcode: str, config: Dict[str, Any]) -> Dict[str, Any]:
