@@ -1,30 +1,47 @@
-from flask import Flask, request, Response
 import traceback
 from typing import Dict, Any
 
-# Assuming these are relative imports in the project structure
-from .sync import autofill_page_by_page_id
+from flask import Flask, request, Response, render_template_string
+
 from .clients.notion_client import NotionClient
 from .config import load_config
+# Assuming these are relative imports in the project structure
+from .sync import autofill_page_by_page_id
 
 # --- Flask App Initialization ---
 app = Flask(__name__)
 
 # --- HTML Template for User Feedback (Kept in Estonian as user-facing) ---
-AUTO_CLOSE_HTML = """
+RESULT_HTML = """
 <!doctype html>
-<html><head><meta charset="utf-8"><title>Done</title></head>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Autofill Tulemus</title>
+    <style>
+        body { font-family: sans-serif; line-height: 1.6; padding: 20px; max-width: 600px; margin: 0 auto; }
+        .card { border: 1px solid #ddd; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .success { color: #2ecc71; }
+        .warning { color: #f39c12; }
+        .error { color: #e74c3c; }
+        h2 { margin-top: 0; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; }
+    </style>
+</head>
 <body>
-<script>
-/* Attempt to close the tab; if the browser doesn't allow it, try again with a slight delay. */
-(function(){
-  try { window.close(); } catch(e) {}
-  setTimeout(function(){
-    try { window.open('', '_self', ''); window.close(); } catch(e) {}
-  }, 30);
-})();
-</script>
-</body></html>
+    <div class="card">
+        <h2 class="{{ 'success' if success else 'error' }}">
+            {{ '✅ Valmis!' if success else '❌ Viga!' }}
+        </h2>
+        <p>{{ message }}</p>
+        {% if company_name %}
+            <p><strong>Ettevõte:</strong> {{ company_name }}</p>
+        {% endif %}
+        <hr>
+        <p><small>Võid selle akna nüüd sulgeda.</small></p>
+    </div>
+</body>
+</html>
 """
 
 
@@ -77,18 +94,9 @@ def autofill():
     - Returns a minimal HTML page that automatically CLOSES THE TAB (does not keep reports on screen).
     """
     page_id = None
-
-    # Load configuration
     config = load_config()
-    NOTION_API_KEY = config.get("notion", {}).get("token")
-    NOTION_DATABASE_ID = config.get("notion", {}).get("database_id")
-    ARIREGISTER_JSON_URL = config.get("ariregister", {}).get("json_url")
-
-    # NOTE! If config is missing, we cannot update Notion — but we still close the tab.
-    config_ok = all([NOTION_API_KEY, NOTION_DATABASE_ID, ARIREGISTER_JSON_URL])
 
     try:
-        # pageId can come from a GET query, POST body, or POST query
         if request.method == "GET":
             page_id = request.args.get("pageId")
         else:
@@ -96,50 +104,28 @@ def autofill():
             page_id = data.get("pageId") or request.args.get("pageId")
 
         if not page_id:
-            # page_id is missing – cannot do anything; close the tab.
-            return Response(AUTO_CLOSE_HTML, mimetype="text/html", status=200)
+            return "Viga: pageId puudub", 400
 
-        if not config_ok:
-            # Required config is missing – try to write an error message to Notion at least (if possible at all).
-            try:
-                update_autofill_status(
-                    page_id, "Viga: Puuduv konfiguratsioon (EST)", config
-                )
-            except Exception:
-                pass
-            return Response(AUTO_CLOSE_HTML, mimetype="text/html", status=200)
+        # Käivitame sünkroonimise
+        result = autofill_page_by_page_id(page_id, config)
 
-        # Execute the main logic (defined in your project)
-        result: Dict[str, Any] = autofill_page_by_page_id(page_id, config)
+        # Uuendame staatust Notionis
+        status_msg = "Edukalt uuendatud" if result.get("success") else f"Viga: {result.get('message')}"
+        update_autofill_status(page_id, status_msg, config)
 
-        # Update Status in Notion
-        if result.get("success"):
-            update_autofill_status(page_id, "Edukalt uuendatud", config)
-        else:
-            # Keep error message short for Notion
-            msg = result.get("message") or "Tundmatu viga"
-            # For duplicate registrikood, the message is already complete, don't add "Viga: " prefix
-            step = result.get("step", "")
-            if step == "duplicate_registrikood":
-                update_autofill_status(page_id, msg[:200], config)
-            else:
-                update_autofill_status(page_id, f"Viga: {msg[:200]}", config)
-
-        # In any case: auto-close
-        return Response(AUTO_CLOSE_HTML, mimetype="text/html", status=200)
+        return render_template_string(
+            RESULT_HTML,
+            success=result.get("success"),
+            message=result.get("message"),
+            company_name=result.get("company_name")
+        )
 
     except Exception as e:
-        traceback.print_exc()
-        # Try to write critical error to Notion, if page_id is known and config is ok
-        if page_id and config_ok:
-            try:
-                update_autofill_status(
-                    page_id, f"Viga: {type(e).__name__}: {e}", config
-                )
-            except Exception:
-                pass
-        # And close the tab anyway
-        return Response(AUTO_CLOSE_HTML, mimetype="text/html", status=200)
+        err_msg = f"Kriitiline viga: {str(e)}"
+        if page_id:
+            update_autofill_status(page_id, err_msg, config)
+        return render_template_string(RESULT_HTML, success=False, message=err_msg), 200
+
 
 
 @app.route("/", methods=["GET"])
