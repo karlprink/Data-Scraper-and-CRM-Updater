@@ -1,0 +1,6 @@
+docs/
+tests/
+*.md
+LICENSE
+.pytest_cache/
+__pycache__/
