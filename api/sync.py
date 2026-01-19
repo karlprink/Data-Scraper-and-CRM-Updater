@@ -784,7 +784,17 @@ def autofill_page_by_page_id(page_id: str, config: Dict[str, Any]) -> Dict[str, 
     # 3.2 Filter properties to only update fields that are empty or contain placeholders
     # This preserves manually added content
     filtered_properties = {}
-    fields_to_check = ["E-post", "Tel. nr", "Veebileht", "LinkedIn"]
+    fields_to_check = [
+        "E-post",
+        "E-post 2",
+        "Tel. nr",
+        "Veebileht",
+        "LinkedIn",
+        "Aadress",
+        "Maakond",
+        "Põhitegevus",
+        "Tegevusvaldkond"
+    ]
 
     for field_name in properties.keys():
         if field_name in fields_to_check:
