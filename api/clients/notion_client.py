@@ -27,6 +27,10 @@ class NotionClient:
         """Adds a new page (entry) to the database."""
         url = "https://api.notion.com/v1/pages"
         r = requests.post(url, headers=self.headers, json=payload)
+        if not r.ok:
+            error_detail = r.text
+            logging.error(f"Notion API error creating page: {r.status_code} - {error_detail}")
+            logging.error(f"Payload sent: {payload}")
         r.raise_for_status()
         return r.json()
 
@@ -125,6 +129,10 @@ class NotionClient:
         url = f"https://api.notion.com/v1/databases/{self.database_id}/query"
         payload = {"filter": filter_dict}
         r = requests.post(url, headers=self.headers, json=payload)
+        if not r.ok:
+            error_detail = r.text
+            logging.error(f"Notion API error querying database: {r.status_code} - {error_detail}")
+            logging.error(f"Filter used: {filter_dict}")
         r.raise_for_status()
         res = r.json()
         return res.get("results", [])

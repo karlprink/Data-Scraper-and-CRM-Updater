@@ -37,11 +37,11 @@ def find_staff_page_by_name_and_role(
             filters.append({"property": "Name", "title": {"equals": name}})
 
         if role:
-            filters.append({"property": "Roll", "rich_text": {"contains": role}})
+            filters.append({"property": "Amet", "rich_text": {"contains": role}})
 
         if company_page_id:
             filters.append(
-                {"property": "Ettevõte", "relation": {"contains": company_page_id}}
+                {"property": "Organisatsioon", "relation": {"contains": company_page_id}}
             )
 
         if len(filters) < 2:
@@ -67,13 +67,13 @@ def map_staff_to_properties(
     """
     properties_data = {
         "Name": staff_member.get("name"),
-        "Roll": staff_member.get("role"),
-        "Email": staff_member.get("email") if staff_member.get("email") else None,
-        "Telefoninumber": staff_member.get("phone") if staff_member.get("phone") else None,
+        "Amet": staff_member.get("role"),
+        "E-mail": staff_member.get("email") if staff_member.get("email") else None,
+        "Tel. nr": staff_member.get("phone") if staff_member.get("phone") else None,
     }
 
     if page_id:
-        properties_data["Ettevõte"] = page_id
+        properties_data["Organisatsioon"] = page_id
 
     return properties_data
 
@@ -94,15 +94,15 @@ def build_notion_properties(
             notion_properties[prop_name] = {
                 "title": [{"text": {"content": prop_value}}]
             }
-        elif prop_name == "Roll":
+        elif prop_name == "Amet":
             notion_properties[prop_name] = {
                 "rich_text": [{"text": {"content": prop_value}}]
             }
-        elif prop_name == "Email":
+        elif prop_name == "E-mail":
             notion_properties[prop_name] = {"email": prop_value}
-        elif prop_name == "Telefoninumber":
+        elif prop_name == "Tel. nr":
             notion_properties[prop_name] = {"phone_number": prop_value}
-        elif prop_name == "Ettevõte":
+        elif prop_name == "Organisatsioon":
             notion_properties[prop_name] = {"relation": [{"id": prop_value}]}
 
     return notion_properties
@@ -127,8 +127,6 @@ def sync_staff_data(
     skipped_count = 0
     errors = []
 
-    current_date_est = datetime.now().strftime("%d.%m.%Y")
-
     for staff_member in staff_data:
         person_name = staff_member.get("name")
         person_role = staff_member.get("role")
@@ -152,11 +150,11 @@ def sync_staff_data(
 
                 email_changed = (
                     current_staff_member_data.get("email")
-                    != existing_flat_data.get("Email")
+                    != existing_flat_data.get("E-mail")
                 )
                 phone_changed = (
                     current_staff_member_data.get("phone")
-                    != existing_flat_data.get("Telefoninumber")
+                    != existing_flat_data.get("Tel. nr")
                 )
 
                 if email_changed or phone_changed:
@@ -180,18 +178,11 @@ def sync_staff_data(
                         existing_role_page
                     )
                     existing_name = existing_flat_data.get("Name")
-                    existing_role = existing_flat_data.get("Roll")
 
                     if existing_name and existing_name != person_name:
-                        mark_page_as_aegunud(
-                            notion,
-                            existing_role_page["id"],
-                            existing_role or person_role,
-                        )
-
-                        current_staff_member_data["role"] = (
-                            f"{person_role} (uuendatud {current_date_est})"
-                        )
+                        # Different person with same role - create new page, keep old one
+                        # Keep original role without date suffix
+                        current_staff_member_data["role"] = person_role
 
                         notion.create_page(
                             {
@@ -206,6 +197,7 @@ def sync_staff_data(
                         )
                         created_count += 1
                     else:
+                        # Same person, update existing page
                         notion.update_page(
                             existing_role_page["id"],
                             build_notion_properties(
@@ -217,9 +209,8 @@ def sync_staff_data(
                         )
                         updated_count += 1
                 else:
-                    current_staff_member_data["role"] = (
-                        f"{person_role} (Lisatud {current_date_est})"
-                    )
+                    # Keep original role without date suffix
+                    current_staff_member_data["role"] = person_role
 
                     notion.create_page(
                         {
@@ -258,18 +249,18 @@ def extract_notion_properties_for_comparison(page: Dict[str, Any]) -> Dict[str, 
         else None
     )
 
-    role_prop = properties.get("Roll", {})
-    extracted["Roll"] = (
+    role_prop = properties.get("Amet", {})
+    extracted["Amet"] = (
         role_prop["rich_text"][0]["plain_text"]
         if role_prop.get("type") == "rich_text" and role_prop.get("rich_text")
         else None
     )
 
-    email_prop = properties.get("Email", {})
-    extracted["Email"] = email_prop.get("email")
+    email_prop = properties.get("E-mail", {})
+    extracted["E-mail"] = email_prop.get("email")
 
-    phone_prop = properties.get("Telefoninumber", {})
-    extracted["Telefoninumber"] = phone_prop.get("phone_number")
+    phone_prop = properties.get("Tel. nr", {})
+    extracted["Tel. nr"] = phone_prop.get("phone_number")
 
     return extracted
 
@@ -287,11 +278,11 @@ def find_staff_page_by_role_only(
         filters = []
 
         if role:
-            filters.append({"property": "Roll", "rich_text": {"contains": role}})
+            filters.append({"property": "Amet", "rich_text": {"contains": role}})
 
         if company_page_id:
             filters.append(
-                {"property": "Ettevõte", "relation": {"contains": company_page_id}}
+                {"property": "Organisatsioon", "relation": {"contains": company_page_id}}
             )
 
         if not filters:
@@ -306,7 +297,7 @@ def find_staff_page_by_role_only(
                 continue
 
             if exclude_aegunud:
-                role_prop = page.get("properties", {}).get("Roll", {})
+                role_prop = page.get("properties", {}).get("Amet", {})
                 if role_prop.get("type") == "rich_text" and role_prop.get("rich_text"):
                     if "AEGUNUD" in role_prop["rich_text"][0].get(
                         "plain_text", ""
@@ -334,7 +325,7 @@ def mark_page_as_aegunud(notion: NotionClient, page_id: str, current_role: str) 
         notion.update_page(
             page_id,
             {
-                "Roll": {
+                "Amet": {
                     "rich_text": [{"text": {"content": f"{base_role} AEGUNUD"}}]
                 }
             },
