@@ -169,6 +169,9 @@ def sync_staff_data(
                 else:
                     skipped_count += 1
             else:
+                # No page with this name+role: same name + different role → we will create
+                # a new page (no existing_role_page for the new role), or same role +
+                # different name → create new. Never overwrite or delete the old page.
                 existing_role_page = find_staff_page_by_role_only(
                     notion, person_role, page_id, exclude_aegunud=True
                 )
@@ -180,8 +183,13 @@ def sync_staff_data(
                     existing_name = existing_flat_data.get("Name")
 
                     if existing_name and existing_name != person_name:
-                        # Different person with same role - create new page, keep old one
-                        # Keep original role without date suffix
+                        # Different person with same role: mark previous holder as (endine), then add new
+                        existing_role = existing_flat_data.get("Amet") or person_role
+                        mark_page_as_endine(
+                            notion,
+                            existing_role_page["id"],
+                            existing_role,
+                        )
                         current_staff_member_data["role"] = person_role
 
                         notion.create_page(
@@ -299,9 +307,8 @@ def find_staff_page_by_role_only(
             if exclude_aegunud:
                 role_prop = page.get("properties", {}).get("Amet", {})
                 if role_prop.get("type") == "rich_text" and role_prop.get("rich_text"):
-                    if "AEGUNUD" in role_prop["rich_text"][0].get(
-                        "plain_text", ""
-                    ).upper():
+                    plain = role_prop["rich_text"][0].get("plain_text", "").upper()
+                    if "AEGUNUD" in plain or "ENDINE" in plain:
                         continue
 
             return page
@@ -312,16 +319,41 @@ def find_staff_page_by_role_only(
         return None
 
 
+def _base_role_for_suffix(role: str) -> str:
+    """Strip (endine), AEGUNUD, and other parenthetical suffixes to get base role."""
+    base = role
+    for tag in ["AEGUNUD", "uuendatud", "Lisatud", "(endine)", "endine"]:
+        base = base.replace(tag, "").strip()
+    base = re.sub(r"\s*\([^)]*\)\s*", "", base).strip()
+    return base or role
+
+
+def mark_page_as_endine(notion: NotionClient, page_id: str, current_role: str) -> bool:
+    """
+    Marks a staff page as former holder of the role: e.g. "Finantsjuht" → "Finantsjuht (endine)".
+    """
+    try:
+        base_role = _base_role_for_suffix(current_role)
+        notion.update_page(
+            page_id,
+            {
+                "Amet": {
+                    "rich_text": [{"text": {"content": f"{base_role} (endine)"}}]
+                }
+            },
+        )
+        return True
+    except Exception as e:
+        logging.error(f"Error marking page as endine: {e}")
+        return False
+
+
 def mark_page_as_aegunud(notion: NotionClient, page_id: str, current_role: str) -> bool:
     """
     Marks a staff page as AEGUNUD by updating the role property.
     """
     try:
-        base_role = current_role
-        for tag in ["AEGUNUD", "uuendatud", "Lisatud"]:
-            base_role = base_role.replace(tag, "").strip()
-        base_role = re.sub(r"\s*\([^)]*\)\s*", "", base_role).strip()
-
+        base_role = _base_role_for_suffix(current_role)
         notion.update_page(
             page_id,
             {
